@@ -1,0 +1,24 @@
+########################################
+# General                              #
+########################################
+# define these as environment variables and use them instead...
+#CHIBIOS    = /home/vazgen/Projects/chibios
+#NORSE_ROOT = /home/vazgen/Projects/github/Norse
+
+########################################
+# Include directories                  #
+########################################
+NORSE_INCDIR = $(NORSE_ROOT)/BUILD/chibios/include
+YGGDRASIL    = $(NORSE_ROOT)/Yggdrasil
+RATATOSK     = $(NORSE_ROOT)/Ratatosk
+HREIDMAR     = $(NORSE_ROOT)/Nidavellir/Hreidmar
+
+########################################
+# Library directories                  #
+########################################
+NORSE_LIBDIR = $(NORSE_ROOT)/BUILD/chibios/lib
+
+########################################
+# Library directories                  #
+########################################
+NORSE_BINDIR = $(NORSE_ROOT)/BUILD/chibios/bin
