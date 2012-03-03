@@ -88,11 +88,10 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer<T
             SysCmdDataType* sd = (SysCmdDataType*)d;
             if(*sd == SysCmdDataType::CMD_MANIFEST_REQUEST) {
                 mOwner.mSerializer.reset();
-                mOwner.mSerializer.sendSync();
                 mOwner.mSerializer.send(mOwner.mTypeRegistry.extractManifest());
             }
         } else
-        if(mOwner.mTypeRegistry.isTypeEnabled(d->id())) {
+        if(mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {
             mOwner.mHandler.process(d);
         }
         delete d;
@@ -163,7 +162,7 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::deserializerFunc(v
     TypeBase* d = NULL;
     h->mOwner.mDevice.readData(d);
     if(d != NULL) {
-        assert(h->mOwner.mTypeRegistry.isTypeEnabled(d->id())); 
+        assert(h->mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())); 
         h->mInputQueue.push(d);
     }    
     return false;
@@ -189,11 +188,10 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(vo
             SysCmdDataType* sd = (SysCmdDataType*)d;
             if(*sd == SysCmdDataType::CMD_MANIFEST_REQUEST) {
                 h->mOwner.mSerializer.reset();
-                h->mOwner.mSerializer.sendSync();
                 h->mOwner.mSerializer.send(h->mOwner.mTypeRegistry.extractManifest());
             }
         } else
-        if(h->mOwner.mTypeRegistry.isTypeEnabled(d->id())) {
+        if(h->mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {
             h->mOwner.mHandler.process(d);
         }
         delete d;

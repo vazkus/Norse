@@ -31,8 +31,6 @@ public:
     // API used for the service initialization/start/stop.
     static void startService(DeviceParams& params, I& handler);
     static void stopService();
-    // API for synchronization
-    static void sendSync();
     static bool isFunctional();
     // API for sending receiving serializable objects.
     static void send(TypeBase* d);
@@ -106,16 +104,6 @@ Manager<S, I, C>::stopService()
     sDevice.close();
 }
 
-// API for synchronization
-template <typename S, typename I, typename C>
-void 
-Manager<S, I, C>::sendSync()
-{
-    if(sSerializer && isFunctional()) {
-        sSerializer->sendSync();
-    }
-}
-
 
 template <typename S, typename I, typename C>
 bool 
@@ -129,7 +117,7 @@ template <typename S, typename I, typename C>
 void 
 Manager<S, I, C>::send(TypeBase* d)
 {
-    if(sSerializer && isFunctional() && sTypeRegistry.isTypeEnabled(d->id())) {
+    if(sSerializer && isFunctional() && sTypeRegistry.isOwnTypeEnabled(d->id())) {
         // should be a way to do this through a compile time assert.
         sSerializer->send(d);
     }

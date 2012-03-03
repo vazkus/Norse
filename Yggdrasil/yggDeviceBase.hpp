@@ -37,10 +37,8 @@ public:
     virtual void setReadable() = 0;
     virtual bool isError() const = 0;
     virtual void setError() = 0;
-    virtual bool isWaitSynch() const = 0;
-    virtual void setWaitSynch() = 0;
-    virtual bool isWaitManifest() const = 0;
-    virtual void setWaitManifest() = 0;
+    virtual bool isWaitSync() const = 0;
+    virtual void setWaitSync() = 0;
 
     template <class T> void read_checksumed(T& td);
     template <class T> void write_checksumed(const T& td);
@@ -67,7 +65,7 @@ DeviceBase::read_checksumed(T& data)
     mReadChecksum += curChecksum;
     // check the checksum and change the device state if needed 
     if(readChecksum != computedChecksum) {
-        setWaitSynch();
+        setWaitSync();
     }
 }
 

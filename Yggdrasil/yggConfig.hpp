@@ -2,14 +2,6 @@
 #define YGG_CONFIGS_HPP
 
 namespace ygg {
-    // Supported: 
-    //   SYNC_AUTO: tested
-    //   SYNC_MANUAL: not tested, but shut work fine...
-    enum ConfigSynchronization
-    {   
-        SYNC_AUTO,
-        SYNC_MANUAL
-    };
     // Supported:
     //    All tested for both in/out, except mixed configs
     enum ConfigCommunication

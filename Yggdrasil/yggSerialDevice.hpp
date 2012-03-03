@@ -25,13 +25,12 @@ private:
     {
         DEVICE_READABLE,
         DEVICE_STOPPED,
-        DEVICE_WAITING_MANIFEST,
         DEVICE_WAITING_SYNC,
         DEVICE_ERROR
     };
     enum 
     {
-        SYNCH_SEQUENCE = 0x89ABCDEF
+        SYNC_BYTE = 0xAB
     };
 
 private:
@@ -46,20 +45,16 @@ private:
     void setError();
     bool isStopped() const;
     void setStopped();
-    bool isWaitSynch() const;
-    void setWaitSynch();
-    bool isWaitManifest() const;
-    void setWaitManifest();
+    bool isWaitSync() const;
+    void setWaitSync();
     // writing serializable objects
     void writeData(const TypeBase* d);
     // reading serializable objects
     void readData(TypeBase*& d);
 
 private:
-    UnitType  readOneByte();
+    UnitType  readObjectType();
     TypeBase* buildObject(UnitType fType);
-    void      writeSync(); 
-    bool      readSync();
 
 public:
     void lockWrite();
@@ -95,7 +90,6 @@ private:
     MutexType     mWriteMutex;
     DeviceState   mState;
     TypeRegistry* mTypeRegistry;
-    const UnitType SYNC_TYPE_ID;
 };
 
 
@@ -104,8 +98,7 @@ private:
 template<typename T, typename C>
 SerialDevice<T,C>::SerialDevice()
  : mState(DEVICE_STOPPED),
-   mTypeRegistry(NULL),
-   SYNC_TYPE_ID(std::numeric_limits<UnitType>::max())
+   mTypeRegistry(NULL)
 {}
 
 template<typename T, typename C>
@@ -120,7 +113,7 @@ void
 SerialDevice<T,C>::open(ParamsType& params)
 {
     if(mDevice.initialize(params)) {
-        mState = DEVICE_WAITING_MANIFEST;
+        mState = DEVICE_WAITING_SYNC;
     } else {
         mState = DEVICE_ERROR;
     }
@@ -178,30 +171,16 @@ SerialDevice<T,C>::setStopped()
 
 template<typename T, typename C>
 bool 
-SerialDevice<T,C>::isWaitSynch() const
+SerialDevice<T,C>::isWaitSync() const
 {
     return mState == DEVICE_WAITING_SYNC;
 }
 
 template<typename T, typename C>
 void 
-SerialDevice<T,C>::setWaitSynch()
+SerialDevice<T,C>::setWaitSync()
 {
     mState = DEVICE_WAITING_SYNC;
-}
-
-template<typename T, typename C>
-bool 
-SerialDevice<T,C>::isWaitManifest() const
-{
-    return mState == DEVICE_WAITING_MANIFEST;
-}
-
-template<typename T, typename C>
-void 
-SerialDevice<T,C>::setWaitManifest()
-{
-    mState = DEVICE_WAITING_MANIFEST;
 }
 
 template<typename T, typename C>
@@ -210,7 +189,13 @@ SerialDevice<T,C>::writeData(const TypeBase* d)
 {
     //assert(d && d->desc());
     UnitType typeId = d->id();
+    // write the synchronization byte
+    write((UnitType)SYNC_BYTE);
+    // write the type
     write(typeId);
+    // write the checksum
+    UnitType cs = 255 - typeId - SYNC_BYTE;
+    write(cs);
     // reset the checksum, we will be using it when dumping the object
     mWriteChecksum = 0;
     d->write(*this);
@@ -220,25 +205,33 @@ SerialDevice<T,C>::writeData(const TypeBase* d)
 
 template<typename T, typename C>
 typename SerialDevice<T,C>::UnitType 
-SerialDevice<T,C>::readOneByte()
+SerialDevice<T,C>::readObjectType()
 {
     assert(mTypeRegistry);
-    UnitType b;
-    read(b);
-    while (isWaitSynch() || b == SYNC_TYPE_ID) {
-        if(b == SYNC_TYPE_ID) {
-            if(readSync()) {
-                // in case of success switch to the appropriate state
-                mTypeRegistry->isManifestReceved() ? setReadable() 
-                                                   : setWaitManifest();
-            } else {
-                // if not, continue waiting for sync
-                setWaitSynch();
+    UnitType s, t, cs;
+    // read the first byte, we hope this is the sync.
+    read(s);
+    while (isWaitSync()) {
+        if(s == SYNC_BYTE) {
+            // ok check the next one, it should be the data type byte
+            read(t);
+            if(!mTypeRegistry->isForeignTypeEnabled(t)) {
+                // nope, continue search
+                s = t;
+                continue;
             }
+            // ok, so far so good, read the checksum
+            read(cs);
+            if(cs + s + t != 255) {
+                // checksum didn't match, continue from here
+                s = cs;
+                continue;
+            }
+            // we are good to go!
+            setReadable();
         }
-        read(b);
     }
-    return b;
+    return t;
 }
 
 template<typename T, typename C>
@@ -246,46 +239,12 @@ void
 SerialDevice<T,C>::readData(TypeBase*& d)
 {
     d = NULL;
-    UnitType fType = readOneByte();
+    UnitType fType = readObjectType();
     // if we reached here then we have a sync!
-    assert(!isWaitSynch());
+    assert(!isWaitSync());
     d = buildObject(fType);
-    // if failed to read -> start waiting for sync
-    if(d == NULL) {
-        setWaitSynch();
-    }
-}
-
-template<typename T, typename C>
-void 
-SerialDevice<T,C>::writeSync() 
-{
-    UnitType dummy = SYNC_TYPE_ID;
-    write(&dummy, sizeof(UnitType)); 
-    SyncType sync = (SyncType)SYNCH_SEQUENCE;
-    //write(&s, sizeof(SyncType));
-    uint8_t* sb = (uint8_t*)&sync;
-    uint32_t sync_len = sizeof(SyncType);
-    for(uint32_t i = 0; i < sync_len; ++i) {
-        write(*sb);
-        sb++;
-    }
-}
-
-template<typename T, typename C>
-bool 
-SerialDevice<T,C>::readSync()
-{
-    SyncType sync = (SyncType)SYNCH_SEQUENCE;
-    uint8_t b;
-    uint8_t* sb = (uint8_t*)&sync;
-    uint32_t sync_len = sizeof(SyncType);
-    for(uint32_t i = 0; i < sync_len; ++i) {
-        read(b);
-        if(b != *(sb)) return false;
-        sb++;
-    }
-    return true;
+    // waiting for the next object no matter the previous was successfull or not...
+    setWaitSync();
 }
 
 template<typename T, typename C>
@@ -497,7 +456,7 @@ SerialDevice<T,C>::read(std::string& stringd)
 {
     uint32_t stringd_len;
     read_checksumed(stringd_len);
-    if(isWaitSynch()) {
+    if(isWaitSync()) {
         return;
     }
     char* buf = new char[stringd_len];

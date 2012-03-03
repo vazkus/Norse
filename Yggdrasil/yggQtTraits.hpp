@@ -21,7 +21,7 @@ public:
     }
     void wait() 
     {
-        wait(&mCondMutex);
+        QWaitCondition::wait(&mCondMutex);
     }
     void signal() 
     {

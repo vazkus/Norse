@@ -27,18 +27,12 @@ private:
         void send(TypeBase* d);
         void reset();
     };
-    template <typename TH, ConfigSynchronization>
-    class SyncSender
-    {
-    };
 public:
     void send(TypeBase* d);
     void reset();
-    void sendSync();
 private:
     SerialDeviceType& mDevice;
     Helper<T,C::Serialization>       mHelper;
-    SyncSender<T,C::Synchronization> mSyncSender;
 };
 
 
@@ -49,8 +43,7 @@ private:
 template <typename T, typename C>
 Serializer<T,C>::Serializer(SerialDeviceType& device)
  : mDevice(device),
-   mHelper(*this),
-   mSyncSender(*this)
+   mHelper(*this)
 {
 }
 template <typename T, typename C>
@@ -58,15 +51,6 @@ void
 Serializer<T,C>::send(TypeBase* d)
 {
     mHelper.send(d);
-}
-
-template <typename T, typename C>
-void
-Serializer<T,C>::sendSync()
-{
-    mDevice.lockWrite();
-    mDevice.writeSync();
-    mDevice.unlockWrite();
 }
 
 template <typename T, typename C>
@@ -188,49 +172,6 @@ Serializer<T,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::serializerFunc(void* par
     delete d;
     return false;
 }
-
-
-/////////////////////////////////////////////////////////
-//   Partial specialization of the class SyncSender    //
-//   for SYNC_AUTO configuration                       //  
-/////////////////////////////////////////////////////////
-template <typename T, typename C>
-template <typename TH>
-class Serializer<T,C>::SyncSender<TH,SYNC_AUTO>
-{
-    //template <typename MT, typename MI, typename MC> friend class Manager;
-    typedef typename T::ThreadType   ThreadType;
-public:
-    SyncSender(Serializer<T,C>& s)
-      : mOwner(s),
-        mSyncSenderThread("SyncSender", 512, C::BasePriority, syncFunc, NULL, this)
-    { }
-private:
-    static bool syncFunc(void* param)
-    {
-        SyncSender<TH,SYNC_AUTO>* h = (SyncSender<TH,SYNC_AUTO>*)param;
-        h->mOwner.sendSync();
-        ThreadType::sleepMilliseconds(C::SyncAutoMs);
-        return false;
-    }
-private:
-    Serializer<T,C>& mOwner;
-    ThreadType  mSyncSenderThread;
-};
-
-
-/////////////////////////////////////////////////////////
-//   Partial specialization of the class SyncSender    //
-//   for SYNC_MANUAL configuration                     //  
-/////////////////////////////////////////////////////////
-template <typename T, typename C>
-template <typename TH>
-class Serializer<T,C>::SyncSender<TH,SYNC_MANUAL>
-{
-public:
-    SyncSender(Serializer<T,C>&)
-    {}
-};
 
 } // namespace ygg
 #endif //YGG_SERIALIZER_HPP

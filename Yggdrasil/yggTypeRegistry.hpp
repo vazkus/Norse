@@ -71,8 +71,9 @@ public:
     // public API
     template<class Type> bool addType(const std::string& name, const int version);
     TypeBase* instantiateForeignType(UnitType fType) const;
-    TypeBase* instantiateOwnType(uint32_t oType) const;
-    bool      isTypeEnabled(uint32_t oType) const;
+    TypeBase* instantiateOwnType(UnitType oType) const;
+    bool      isOwnTypeEnabled(UnitType oType) const;
+    bool      isForeignTypeEnabled(UnitType oType) const;
     void      initialize();
     TypeBase* extractManifest();
     UnitType  findTypeId(const std::string& name, const VersionType version);
@@ -134,15 +135,14 @@ TypeRegistry::ManifestData::read(DeviceBase& dev)
 {
     uint32_t dSize;
     dev.read_checksumed(dSize);
-    if(dev.isWaitSynch()) {
-        return;
-    }
-    for(uint32_t i = 0; i < dSize; ++i) {
-        mDescriptorRecords.push_back(DescriptorRecord());
-        DescriptorRecord& drecord = mDescriptorRecords.back();
-        dev.read(drecord.mId);
-        dev.read(drecord.mVersion);
-        dev.read(drecord.mName);
+    if(dev.isReadable()) {
+        for(uint32_t i = 0; i < dSize; ++i) {
+            mDescriptorRecords.push_back(DescriptorRecord());
+            DescriptorRecord& drecord = mDescriptorRecords.back();
+            dev.read(drecord.mId);
+            dev.read(drecord.mVersion);
+            dev.read(drecord.mName);
+        }
     }
 }
 
@@ -232,17 +232,24 @@ TypeRegistry::instantiateForeignType(UnitType fType) const
 }
 
 inline TypeBase* 
-TypeRegistry::instantiateOwnType(uint32_t oType) const
+TypeRegistry::instantiateOwnType(UnitType oType) const
 {
-    if(isValidType(oType) && isTypeEnabled(oType)) {
+    if(isValidType(oType) && isOwnTypeEnabled(oType)) {
         const DescriptorState& state = descriptorStateAt(oType);
         return state.descriptor->create();
     }
     return NULL;
 }
 
+inline bool  
+TypeRegistry::isForeignTypeEnabled(UnitType fType) const
+{
+    UnitType oType = foreignTypeToOwnType(fType);
+    return isOwnTypeEnabled(oType);
+}
+
 inline bool 
-TypeRegistry::isTypeEnabled(uint32_t oType) const
+TypeRegistry::isOwnTypeEnabled(UnitType oType) const
 {
     if(isValidType(oType)) {
         return descriptorStateAt(oType).enabled;
