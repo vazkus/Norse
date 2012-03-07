@@ -3,8 +3,6 @@
 
 #include "yggManager.hpp"
 #include "yggTypes.hpp"
-#include "yggTypeRegistry.hpp"
-#include "yggSerialDevice.hpp"
 #include "yggQtTraits.hpp"
 
 namespace thor {
