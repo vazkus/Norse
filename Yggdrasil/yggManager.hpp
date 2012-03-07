@@ -1,7 +1,8 @@
 #ifndef YGG_MANAGER_HPP
 #define YGG_MANAGER_HPP
 
-#include "yggSerialDevice.hpp"
+#include "yggTransport.hpp"
+#include "yggTransportImpl.hpp"
 #include "yggSerializer.hpp"
 #include "yggDeserializer.hpp"
 #include <cstddef>
@@ -16,20 +17,19 @@ public:
     typedef S SystemTraits;
     typedef I InputHandler;
     typedef C Configuration;
-    typedef typename S::MutexType    Mutex;
-    typedef typename S::CondType     Cond;
-    typedef typename S::ThreadType   Thread;
-    typedef typename S::DeviceType   Device;
-    typedef typename S::Utils        Utils;
-    typedef ygg::SerialDevice<S,C>   SerialDevice;
-    typedef ygg::Serializer<S,C>     Serializer;
+    typedef typename S::MutexType  Mutex;
+    typedef typename S::CondType   Condition;
+    typedef typename S::ThreadType Thread;
+    typedef typename S::DeviceType Device;
+    typedef typename S::Utils      Utils;
+    typedef ygg::Serializer<S,C>   Serializer;
     typedef typename S::DeviceParamsType   DeviceParams;
     typedef ygg::Deserializer<S,Serializer,I,C> Deserializer;
 private:
     template <typename TM, ConfigManifest> class ManifestRequester;
 public:
     // API used for the service initialization/start/stop.
-    static void startService(DeviceParams& params, I& handler);
+    static void startService(DeviceBase* device, I* handler);
     static void stopService();
     static bool isFunctional();
     // API for sending receiving serializable objects.
@@ -41,19 +41,19 @@ public:
 
 private:
     static TypeRegistry  sTypeRegistry;
-    static SerialDevice  sDevice;
     static Serializer*   sSerializer;
     static Deserializer* sDeserializer;
+    static ConfiguredTransport<C> sTransport;
 };
 
 /////////////////////////////////////////////////////////
 // static data member initialization area...           //
 /////////////////////////////////////////////////////////
-template<typename T, typename I, typename C> SerialDevice<T,C> Manager<T,I,C>::sDevice;
 template<typename T, typename I, typename C> TypeRegistry Manager<T,I,C>::sTypeRegistry;
 template<typename T, typename I, typename C> Serializer<T,C>* Manager<T,I,C>::sSerializer = NULL;
 template<typename T, typename I, typename C> Deserializer<T,typename Manager<T,I,C>::Serializer,I,C>* 
                                                           Manager<T,I,C>::sDeserializer = NULL;
+template<typename T, typename I, typename C> ConfiguredTransport<C> Manager<T,I,C>::sTransport;
 
 
 
@@ -62,7 +62,7 @@ template<typename T, typename I, typename C> Deserializer<T,typename Manager<T,I
 /////////////////////////////////////////////////////////
 template <typename S, typename I, typename C>
 void 
-Manager<S, I, C>::startService(DeviceParams& params, I& handler)
+Manager<S, I, C>::startService(DeviceBase* device, I* handler)
 {
     // TBD: design is not very good, too many data types are 
     // interconnected.. Review this.
@@ -70,20 +70,19 @@ Manager<S, I, C>::startService(DeviceParams& params, I& handler)
     ManifestRequester<S,C::ManifestRequired>::start();
 
     // open the device
-    sDevice.open(params);
-    if(sDevice.isError()) {
+    sTransport.start(device);
+    if(sTransport.isError()) {
         return;
     }
-    sDevice.setTypeRegistry(&sTypeRegistry);
+    sTransport.setTypeRegistry(&sTypeRegistry);
     // construct the serializer 
     if(sSerializer == NULL) {
-        sSerializer = new Serializer(sDevice);
+        sSerializer = new Serializer(sTransport);
     }
     // construct the deserializer
     if(sDeserializer == NULL) {
-        // tbd: too many parameters... try to redesing...
-        sDeserializer = new Deserializer(sDevice, sTypeRegistry, 
-                                         *sSerializer, handler);
+        sDeserializer = new Deserializer(sTransport, sTypeRegistry, 
+                                         *sSerializer, *handler);
     }
 }
 
@@ -101,7 +100,7 @@ Manager<S, I, C>::stopService()
         sDeserializer = NULL;
         delete temp;
     }
-    sDevice.close();
+    sTransport.stop();
 }
 
 
@@ -109,7 +108,7 @@ template <typename S, typename I, typename C>
 bool 
 Manager<S, I, C>::isFunctional()
 {
-    return !sDevice.isError() && !sDevice.isStopped();
+    return !sTransport.isError() && !sTransport.isStopped();
 }
 
 // API for sending receiving serializable objects.

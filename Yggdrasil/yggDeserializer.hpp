@@ -3,7 +3,7 @@
 
 #include "yggQueue.hpp"
 #include "yggTypes.hpp"
-#include "yggSerialDevice.hpp"
+#include "yggTransport.hpp"
 #include "yggConfig.hpp"
 
 
@@ -13,11 +13,9 @@ template<typename T, typename S, typename I, typename C>
 class Deserializer
 {
     typedef typename T::MutexType   MutexType;
-    typedef typename T::DeviceType  DeviceType;
-    typedef SerialDevice<T, C>      SerialDeviceType;
 private:
     template <typename MT, typename MI, typename MC> friend class Manager;
-    Deserializer(SerialDeviceType& device, 
+    Deserializer(Transport& transport, 
                  TypeRegistry& registry, 
                  S& serializer,
                  I& handler);
@@ -29,7 +27,7 @@ private:
         Helper(Deserializer<T,S,I,C>& ds);
     };
 private:
-    SerialDeviceType& mDevice;
+    Transport& mTransport;
     TypeRegistry&     mTypeRegistry;
     S&  mSerializer;
     I&  mHandler;
@@ -37,18 +35,17 @@ private:
 };
 
 template <typename T, typename S, typename I, typename C>
-Deserializer<T, S, I, C>::Deserializer(SerialDeviceType& device, 
-                                         TypeRegistry& registry, 
-                                         S& serializer,
-                                         I& handler)
- : mDevice(device),
+Deserializer<T, S, I, C>::Deserializer(Transport& transport, 
+                                       TypeRegistry& registry, 
+                                       S& serializer,
+                                       I& handler)
+ : mTransport(transport),
    mTypeRegistry(registry),
    mSerializer(serializer),
    mHandler(handler),
    mHelper(*this)
 {
 }
-
 
 /////////////////////////////////////////////////////////
 //   partial specialization of the helper class for    //
@@ -76,7 +73,7 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer<T
     // find a proper break condition...
     while(true) {
         TypeBase* d = NULL;
-        mOwner.mDevice.readData(d);
+        mOwner.mTransport.readData(d);
         if(d == NULL) {
             continue;
         }
@@ -160,7 +157,7 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::deserializerFunc(v
 {
     Helper<TH,COMMUNICATION_NONBLOCKING>* h = (Helper<TH,COMMUNICATION_NONBLOCKING>*)param;
     TypeBase* d = NULL;
-    h->mOwner.mDevice.readData(d);
+    h->mOwner.mTransport.readData(d);
     if(d != NULL) {
         assert(h->mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())); 
         h->mInputQueue.push(d);

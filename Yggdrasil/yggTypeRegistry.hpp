@@ -1,11 +1,13 @@
 #ifndef YGG_DATA_TYPE_REGISTRY
 #define YGG_DATA_TYPE_REGISTRY
 
+#include "yggTransport.hpp"
 #include "yggTypes.hpp"
 #include "yggConfig.hpp"
 #include <list>
 #include <vector>
 #include <cassert>
+//#include <iostream>
 
 namespace ygg
 {
@@ -13,8 +15,8 @@ namespace ygg
 class TypeRegistry 
 {
     template <typename MT, typename MI, typename MC> friend class Manager;
-public:
-    class ManifestData : public TypeRegistrator<ManifestData>
+private:
+    class ManifestData : public Serializable<ManifestData>
     {
         struct DescriptorRecord 
         {
@@ -27,11 +29,11 @@ public:
         typedef typename DescriptorList::const_iterator DescriptorListConstIt;
         ManifestData();
         void addRecord(TypeDescriptorBase* desc);
-        void write(DeviceBase& dev) const;
-        void read(DeviceBase& dev);
+        void write(Transport& transport) const;
+        void read(Transport& transport);
         DescriptorList mDescriptorRecords;
     };
-    class SystemCmdData: public TypeRegistrator<SystemCmdData>
+    class SystemCmdData: public Serializable<SystemCmdData>
     {
         public:
             enum Type 
@@ -43,14 +45,15 @@ public:
         public:
             SystemCmdData();
             SystemCmdData(const Type type);
-            void write(DeviceBase& dev) const;
-            void read(DeviceBase& dev);
+            void write(Transport& transport) const;
+            void read(Transport& transport);
             bool operator==(const Type& type);
         private:
             bool isValidCommandType(uint32_t cmdType);
         private:
             Type mType;
     };
+    friend Transport& operator<<(Transport& transport, ManifestData& md);
     // keeps the pair of descriptor and it's enabled/disabled status
     struct DescriptorState 
     {
@@ -60,14 +63,14 @@ public:
     };
     typedef std::vector<DescriptorState>        TypeDescriptorArray;
     typedef typename TypeDescriptorArray::const_iterator TypeDescriptorConstIt;
-    typedef TypeBase::UnitType        UnitType;
-    typedef TypeBase::VersionType     VersionType;
-    typedef std::vector<UnitType>     TypeIdMap;
+    typedef TypeDescriptorBase::UnitType        UnitType;
+    typedef TypeDescriptorBase::VersionType     VersionType;
+    typedef std::vector<UnitType>               TypeIdMap;
     
     TypeRegistry();
     ~TypeRegistry();
 
-//public:
+public:
     // public API
     template<class Type> bool addType(const std::string& name, const int version);
     TypeBase* instantiateForeignType(UnitType fType) const;
@@ -100,11 +103,9 @@ private:
     const UnitType      INVALID_TYPE_ID;
 };
 
-
 inline
 TypeRegistry::ManifestData::ManifestData()
 {}
-
 
 inline void 
 TypeRegistry::ManifestData::addRecord(TypeDescriptorBase* desc)
@@ -118,34 +119,35 @@ TypeRegistry::ManifestData::addRecord(TypeDescriptorBase* desc)
 }
 
 inline void 
-TypeRegistry::ManifestData::write(DeviceBase& dev) const 
+TypeRegistry::ManifestData::write(Transport& transport) const 
 {
-    dev.write_checksumed((uint32_t)mDescriptorRecords.size());
+    transport.writeChecksumed((uint32_t)mDescriptorRecords.size());
     DescriptorListConstIt dit = mDescriptorRecords.begin();
     DescriptorListConstIt edit = mDescriptorRecords.end();
     for(; dit != edit; ++dit) {
-        dev.write(dit->mId);
-        dev.write(dit->mVersion);
-        dev.write(dit->mName);
+        transport.write(dit->mId);
+        transport.write(dit->mVersion);
+        transport.write(dit->mName);
     }
 }
 
 inline void 
-TypeRegistry::ManifestData::read(DeviceBase& dev) 
+TypeRegistry::ManifestData::read(Transport& transport) 
 {
     uint32_t dSize;
-    dev.read_checksumed(dSize);
-    if(dev.isReadable()) {
+    transport.readChecksumed(dSize);
+    //std::cout<<"dsize: "<<dSize<<" readable: "<<transport.isReadable()<<std::endl;
+    if(transport.isReadable()) {
         for(uint32_t i = 0; i < dSize; ++i) {
             mDescriptorRecords.push_back(DescriptorRecord());
             DescriptorRecord& drecord = mDescriptorRecords.back();
-            dev.read(drecord.mId);
-            dev.read(drecord.mVersion);
-            dev.read(drecord.mName);
+            transport.read(drecord.mId);
+            transport.read(drecord.mVersion);
+            transport.read(drecord.mName);
+            //std::cout<<"record: "<<(int)drecord.mId<<" "<<(int)drecord.mVersion<<" "<<drecord.mName<<std::endl;
         }
     }
 }
-
 
 inline
 TypeRegistry::SystemCmdData::SystemCmdData() 
@@ -157,16 +159,16 @@ TypeRegistry::SystemCmdData::SystemCmdData(const Type type)
 {}
 
 inline void 
-TypeRegistry::SystemCmdData::write(DeviceBase& dev) const
+TypeRegistry::SystemCmdData::write(Transport& transport) const
 {
-    dev.write((uint32_t)mType);
+    transport.write((uint32_t)mType);
 }
 
 inline void 
-TypeRegistry::SystemCmdData::read(DeviceBase& dev)  
+TypeRegistry::SystemCmdData::read(Transport& transport)  
 {
     uint32_t cmdType;
-    dev.read(cmdType);
+    transport.read(cmdType);
     if(isValidCommandType(cmdType)) {
         mType = (Type)cmdType;
     }
@@ -213,10 +215,8 @@ TypeRegistry::addType(const std::string& name, const int version)
     if(mDescriptors.size() < 2) {
         mDescriptors.resize(2);
     }
-    TypeDescriptorBase* tDesc = new TypeDescriptor<Type>();
-    TypeDescriptor<Type>::sId = mDescriptors.size();
-    TypeDescriptor<Type>::sVersion = version;
-    TypeDescriptor<Type>::sName = name;
+    TypeDescriptorBase* tDesc = 
+        new TypeDescriptor<Type>(mDescriptors.size(), version, name);
     mDescriptors.push_back(DescriptorState(tDesc, false));
     return true;
 }
@@ -263,17 +263,11 @@ TypeRegistry::initialize()
     mDescriptors.resize(std::max(mDescriptors.size(),(size_t)2));
 
     // hard-register ManifestData
-    TypeDescriptorBase* mDesc = new TypeDescriptor<ManifestData>();
-    TypeDescriptor<ManifestData>::sId = 0;
-    TypeDescriptor<ManifestData>::sVersion = 0;
-    TypeDescriptor<ManifestData>::sName = "ManifestData";
+    TypeDescriptorBase* mDesc = new TypeDescriptor<ManifestData>(0,0,"ManifestData");
     mDescriptors[0] = DescriptorState(mDesc);
     acceptType(0, 0);
     // hard-register SystemCmdData
-    TypeDescriptorBase* cDesc = new TypeDescriptor<SystemCmdData>();
-    TypeDescriptor<SystemCmdData>::sId = 1;
-    TypeDescriptor<SystemCmdData>::sVersion = 0;
-    TypeDescriptor<SystemCmdData>::sName = "SystemCmdData";
+    TypeDescriptorBase* cDesc = new TypeDescriptor<SystemCmdData>(1,0,"SystemCmdData");
     mDescriptors[1] = DescriptorState(cDesc);
     acceptType(1, 1);
 }
@@ -319,6 +313,7 @@ TypeRegistry::applyManifest(ManifestData* md)
         }
     }
     if(!md->mDescriptorRecords.empty()) {
+        //std::cout<<"Manifest accepted"<<std::endl;
         setManifestReceived(true);
     }
 }
@@ -404,7 +399,6 @@ TypeRegistry::reset()
     mTypeMap.clear();
     setManifestReceived(false);
 }
-
 
 } // namespace ygg
 

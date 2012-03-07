@@ -3,7 +3,7 @@
 
 #include "yggQueue.hpp"
 #include "yggTypes.hpp"
-#include "yggSerialDevice.hpp"
+#include "yggTransport.hpp"
 #include "yggConfig.hpp"
 
 
@@ -13,11 +13,9 @@ template<typename T, typename C>
 class Serializer
 {
     typedef typename T::MutexType   MutexType;
-    typedef typename T::DeviceType  DeviceType;
-    typedef SerialDevice<T, C>      SerialDeviceType;
 private:
     template <typename MT, typename MI, typename MC> friend class Manager;
-    Serializer(SerialDeviceType& device);
+    Serializer(Transport& transport);
 private:
     template<typename TH, ConfigCommunication>
     class Helper 
@@ -31,8 +29,8 @@ public:
     void send(TypeBase* d);
     void reset();
 private:
-    SerialDeviceType& mDevice;
-    Helper<T,C::Serialization>       mHelper;
+    Transport&  mTransport;
+    Helper<T,C::Serialization> mHelper;
 };
 
 
@@ -41,8 +39,8 @@ private:
 //   Function definitions for the class Serializer     //
 /////////////////////////////////////////////////////////
 template <typename T, typename C>
-Serializer<T,C>::Serializer(SerialDeviceType& device)
- : mDevice(device),
+Serializer<T,C>::Serializer(Transport& transport)
+ : mTransport(transport),
    mHelper(*this)
 {
 }
@@ -90,9 +88,7 @@ template <typename TH>
 void
 Serializer<T,C>::Helper<TH, COMMUNICATION_BLOCKING>::send(TypeBase* d)
 {
-    mOwner.mDevice.lockWrite();
-    mOwner.mDevice.writeData(d);
-    mOwner.mDevice.unlockWrite();
+    mOwner.mTransport.writeData(d);
     delete d;
 }
 
@@ -165,9 +161,7 @@ Serializer<T,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::serializerFunc(void* par
     TypeBase* d = h->mOutputQueue.pop();
     //assert(d && d->desc());
     // write it into the device
-    h->mOwner.mDevice.lockWrite();
-    h->mOwner.mDevice.writeData(d);
-    h->mOwner.mDevice.unlockWrite();
+    h->mOwner.mTransport.writeData(d);
     // data is sent, we can destroy the object
     delete d;
     return false;

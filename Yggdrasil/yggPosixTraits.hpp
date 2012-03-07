@@ -139,10 +139,7 @@ public:
     }
     bool read(void* b, uint32_t size)
     {
-        uint32_t s = ::read(mDesc, b, size);
-        assert(s == size);
-        return true;
-        //return ::read(mDesc, b, size) == size;
+        return ::read(mDesc, b, size) == size;
     }
     bool write(const void* b, uint32_t size) 
     {

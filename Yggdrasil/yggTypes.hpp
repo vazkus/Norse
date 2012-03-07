@@ -1,7 +1,7 @@
 #ifndef YGG_DATA_TYPES_HPP
 #define YGG_DATA_TYPES_HPP
 
-#include "yggDeviceBase.hpp"
+#include "yggBaseTypes.hpp"
 #include <string>
 #include <limits>
 
@@ -9,85 +9,80 @@ namespace ygg
 {
 
 class TypeRegistry;
-class DeviceBase;
 class TypeBase;
+class Transport;
 
-//////////////////////////////////////////////////////
-// type descriptors                                 // 
-//////////////////////////////////////////////////////
-class TypeDescriptorBase
+
+class TypeBase
 {
 public:
     typedef uint8_t UnitType;
-    typedef uint8_t VersionType;
-protected:
-    TypeDescriptorBase()
-    {}
 public:
-    virtual TypeBase*   create() const = 0;
-    virtual UnitType    typeId() const = 0;
-    virtual VersionType typeVersion() const = 0;
+    virtual ~TypeBase()
+    {}
+    virtual void write(Transport& out) const = 0;
+    virtual void read(Transport& in)   = 0;
+    virtual UnitType id() const = 0;
+};
+
+class TypeDescriptorBase
+{
+public:
+    typedef TypeBase::UnitType UnitType;
+    typedef uint8_t            VersionType;
+public:
+    virtual ~TypeDescriptorBase() 
+    {}
+    virtual UnitType           typeId() const = 0;
+    virtual VersionType        typeVersion() const = 0;
     virtual const std::string& typeName() const = 0;
-private:
+    virtual TypeBase* create() const = 0;
 };
 
 template <class Type>
 class TypeDescriptor : public TypeDescriptorBase
 {
     friend class TypeRegistry;
-    TypeDescriptor()
+    TypeDescriptor(UnitType id, VersionType version, const std::string& name) 
+      : mVersion(version),
+        mName(name)
     {
+        sId = id;
     }
 public:
-    TypeBase* create() const 
-    {
-        return new Type();
-    }
-    static UnitType id() 
+    UnitType typeId() const
     {
         return sId;
     }
-    virtual UnitType    typeId() const 
+    VersionType typeVersion() const
     {
-        return TypeDescriptor<Type>::sId;
+        return mVersion;
     }
-    virtual VersionType typeVersion() const
+    const std::string& typeName() const
     {
-        return TypeDescriptor<Type>::sVersion;
+        return mName;
     }
-    virtual const std::string& typeName() const
-    {
-        return TypeDescriptor<Type>::sName;
+    virtual TypeBase* create() const
+    { 
+        return new Type(); 
     }
 private:
-    static UnitType    sId;
-    static VersionType sVersion;
-    static std::string sName;
-};
-
-template <class T> typename TypeDescriptor<T>::UnitType TypeDescriptor<T>::sId;
-template <class T> typename TypeDescriptor<T>::VersionType TypeDescriptor<T>::sVersion;
-template <class T> std::string TypeDescriptor<T>::sName;
-
-
-//////////////////////////////////////////////////////
-// data types                                       //
-//////////////////////////////////////////////////////
-class TypeBase
-{
+    VersionType mVersion;
+    std::string mName;
+    // static 
 public:
-    typedef TypeDescriptorBase::UnitType    UnitType;
-    typedef TypeDescriptorBase::VersionType VersionType;
-    virtual ~TypeBase()
-    {}
-    virtual void write(DeviceBase& dev) const = 0;
-    virtual void read(DeviceBase& dev) = 0;
-    virtual UnitType id() const = 0;
-
+    static UnitType id()
+    {
+        return sId;
+    }
+private:
+    static UnitType sId;
 };
+
+template <class Type> TypeDescriptorBase::UnitType TypeDescriptor<Type>::sId;
 
 template<typename Type>
-class TypeRegistrator : public TypeBase
+class Serializable: public TypeBase
 {
     friend class TypeRegistry;
 public:
