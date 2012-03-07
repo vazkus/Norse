@@ -2,6 +2,7 @@ FIND_PACKAGE(Qt4)
 
 INCLUDE(${QT_USE_FILE})
 # see http://cmake.org/cmake/help/cmake2.6docs.html#module:FindQt4
+SET(CMAKE_BUILD_TYPE Debug)
 
 SET(NORSE_ROOT    /home/vazgen/Projects/github/Norse)
 SET(YGGDRASIL_DIR ${NORSE_ROOT}/Yggdrasil)
@@ -31,6 +32,6 @@ ADD_EXECUTABLE(thorQt ${tho_qt_sources} ${tho_qt_moc_sources})
 ADD_EXECUTABLE(thorPosix ${tho_posix_sources} )
 
 # add libraries...
-TARGET_LINK_LIBRARIES(thoThorQt ${QT_LIBRARIES})
-TARGET_LINK_LIBRARIES(thoThorPosix ${POSIX_LIBRARIES})
+TARGET_LINK_LIBRARIES(thorQt ${QT_LIBRARIES})
+TARGET_LINK_LIBRARIES(thorPosix ${POSIX_LIBRARIES})
 
