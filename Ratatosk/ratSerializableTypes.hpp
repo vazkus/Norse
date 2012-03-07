@@ -8,23 +8,23 @@
 namespace rat
 {
 // a simple data type for serializing type descriptors...
-template <typename T> class TypeRegistrator;
+template <typename T> class Serializable;
 
 // a simple type that can be used for serialization of basic objects and object-arrays
 template <typename Type, uint32_t size>
-class BasicType : public ygg::TypeRegistrator<BasicType<Type, size> >
+class BasicType : public ygg::Serializable<BasicType<Type, size> >
 {
 public:
-    void write(ygg::DeviceBase& dev) const
+    void write(ygg::Transport& transport) const
     {
         for(uint32_t i = 0; i < size; ++i) {
-            dev.write(m_array[i]);
+            transport.write(m_array[i]);
         }
     }
-    void read(ygg::DeviceBase& dev)  
+    void read(ygg::Transport& transport)  
     {
         for(uint32_t i = 0; i < size; ++i) {
-            dev.read(m_array[i]);
+            transport.read(m_array[i]);
         }
     }
 private:
@@ -32,7 +32,7 @@ private:
 };
 
 // a simple type that can be used for serialization of string commands...
-class StrCmdData: public ygg::TypeRegistrator<StrCmdData>
+class StrCmdData: public ygg::Serializable<StrCmdData>
 {
 public:
     StrCmdData() 
@@ -40,13 +40,13 @@ public:
     StrCmdData(const std::string& str)
      : mString(str)
     {}
-    void write(ygg::DeviceBase& dev) const
+    void write(ygg::Transport& transport) const
     {
-        dev.write(mString);
+        transport.write(mString);
     }
-    void read(ygg::DeviceBase& dev)  
+    void read(ygg::Transport& transport)  
     {
-        dev.read(mString);
+        transport.read(mString);
     }
     const std::string& string() const
     {
@@ -56,7 +56,7 @@ private:
     std::string mString;
 };
 
-class LISData : public ygg::TypeRegistrator<LISData>
+class LISData : public ygg::Serializable<LISData>
 {
     typedef rat::Axes Axes;
 public:
@@ -64,17 +64,17 @@ public:
       : mAxes(axes)
     {
     }
-    void write(ygg::DeviceBase& dev) const
+    void write(ygg::Transport& transport) const
     {
-        dev.write(mAxes.x);
-        dev.write(mAxes.y);
-        dev.write(mAxes.z);
+        transport.write(mAxes.x);
+        transport.write(mAxes.y);
+        transport.write(mAxes.z);
     }
-    void read(ygg::DeviceBase& dev)  
+    void read(ygg::Transport& transport)  
     {
-        dev.read(mAxes.x);
-        dev.read(mAxes.y);
-        dev.read(mAxes.z);
+        transport.read(mAxes.x);
+        transport.read(mAxes.y);
+        transport.read(mAxes.z);
     }
     const Axes& axes() const
     {
@@ -84,20 +84,20 @@ private:
     Axes mAxes;
 };
 
-class PingData: public ygg::TypeRegistrator<PingData>
+class PingData: public ygg::Serializable<PingData>
 {
 public:
     PingData(const uint32_t& timeStamp = 0)
      : mTimeStamp(timeStamp)
     {
     }
-    void write(ygg::DeviceBase& dev) const
+    void write(ygg::Transport& transport) const
     {
-        dev.write(mTimeStamp);
+        transport.write(mTimeStamp);
     }
-    void read(ygg::DeviceBase& dev)  
+    void read(ygg::Transport& transport)  
     {
-        dev.read(mTimeStamp);
+        transport.read(mTimeStamp);
     }
     const uint32_t & timeStamp() const
     {
