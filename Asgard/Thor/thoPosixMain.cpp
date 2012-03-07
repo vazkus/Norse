@@ -1,8 +1,4 @@
 #include "yggManager.hpp"
-#include "yggTypes.hpp"
-#include "yggTypeRegistry.hpp"
-#include "yggSerialDevice.hpp"
-#include "yggBaseTypes.hpp"
 #include "yggPosixTraits.hpp"
 #include "ratSerializableTypes.hpp"
 #include <iostream>
@@ -60,9 +56,6 @@ static bool pingerFunc(void* param)
 
 int main()
 {
-    // uart device name
-    ygg::PosixDevice::Params params= { "/dev/ttyUSB0" };
-
     // register a dummy type
     sm::registerType<rat::BasicType<float, 2> >("BasicType4", 1);
     // register ping type
@@ -71,12 +64,21 @@ int main()
     sm::registerType<rat::LISData>("LISData", 1);
 
     // instantiate the input data handler type
-    PCInputHandler inHandler;
+    PCInputHandler handler;
+
+    // specifying uart device name and create the device...
+    sm::DeviceParams params= { "/dev/ttyUSB1" };
+    sm::Device device;
+    // if successfull -> start the service...
+    if(device.initialize(params)) {
+        // start the service
+        sm::startService(&device, &handler);
+    }
+
     // add a thread that sends ping once in a while (set to ~5hz)
     sm::Thread pinger("Pinger", 0, 0, pingerFunc, NULL, NULL);
-    // start the service. Note that the current configuration is non-blocking,
-    // so we need the while(true) trap below...
-    sm::startService(params, inHandler);
+    // Note that the current configuration is non-blocking and we 
+    // need the while(true) trap below...
     while(true) {
         sleep(1);
     }
