@@ -1,6 +1,7 @@
 #ifndef YGG_CHIBIOS_TRAITS_HPP
 #define YGG_CHIBIOS_TRAITS_HPP
 
+#include "yggDeviceBase.hpp"
 #include "ch.hpp"
 #include <fcntl.h>
 #include <unistd.h>
@@ -88,7 +89,7 @@ private:
     void*        mParam;
 };
 
-class ChibiosDevice
+class ChibiosDevice : public DeviceBase
 {
 public:
     struct Params
@@ -102,6 +103,7 @@ public:
         ioportmask_t  mTXMask;
         iomode_t      mTXMode;
     };
+
 public:
     bool initialize(const Params& params)
     {
@@ -127,6 +129,10 @@ public:
     bool write(const void* ptr, uint32_t size) 
     {
         return sdWrite(mSD, (uint8_t*)ptr, size) == size;
+    }
+    bool isOpen() 
+    {
+        return mSD->state == SD_READY;
     }
 
 private:
@@ -155,6 +161,5 @@ public:
 };
 
 } //namespace ygg 
-
 
 #endif //YGG_CHIBIOS_TRAITS_HPP

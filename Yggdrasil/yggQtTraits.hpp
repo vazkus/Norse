@@ -1,6 +1,7 @@
 #ifndef YGG_QT_TRAITS_HPP
 #define YGG_QT_TRAITS_HPP
 
+#include "yggDeviceBase.hpp"
 #include <QMutex>
 #include <QWaitCondition>
 #include <QThread>
@@ -70,7 +71,7 @@ private:
     void*        mParams;
 };
 
-class QtDevice : public QFile
+class QtDevice : public QFile, public DeviceBase
 {
 public:
     struct Params
@@ -83,6 +84,10 @@ public:
         setFileName(params.mDeviceName);
         return open(QIODevice::ReadWrite);
     }
+    void close()
+    {
+        // to be implemented
+    }
     bool read(void* b, uint32_t size)
     {
         return QFile::readData((char*)b, size) == size;
@@ -91,6 +96,11 @@ public:
     {
         return QFile::writeData((const char*)b, size) == size;
     }
+    bool isOpen() 
+    {
+        return QFile::isOpen();
+    }
+
 };
 
 class QtUtils

@@ -1,6 +1,7 @@
 #ifndef YGG_POSIX_TRAITS_HPP
 #define YGG_POSIX_TRAITS_HPP
 
+#include "yggDeviceBase.hpp"
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -9,6 +10,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/time.h>
+#include <cassert>
 
 namespace ygg
 {
@@ -115,10 +117,10 @@ private:
     std::string  mName;
 };
 
-class PosixDevice
+class PosixDevice : public DeviceBase
 {
 public:
-    struct Params
+    struct Params 
     {
         std::string mDeviceName;
     };
@@ -137,11 +139,19 @@ public:
     }
     bool read(void* b, uint32_t size)
     {
-        return ::read(mDesc, b, size) == size;
+        uint32_t s = ::read(mDesc, b, size);
+        assert(s == size);
+        return true;
+        //return ::read(mDesc, b, size) == size;
     }
     bool write(const void* b, uint32_t size) 
     {
         return ::write(mDesc, b, size) == size;
+    }
+    bool isOpen() 
+    {
+        // how else this can be checked?
+        return mDesc >= 0;
     }
 
 private:
