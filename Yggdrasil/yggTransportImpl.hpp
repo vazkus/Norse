@@ -4,7 +4,6 @@
 #include "yggDeviceBase.hpp"
 #include "yggTypeRegistry.hpp"
 #include <cassert>
-//#include <iostream>
 
 
 namespace ygg
@@ -138,7 +137,6 @@ Transport::readObjectType()
         }
         read(s);
     }
-    //std::cout<<"sync: "<<(uint32_t)s<<" type: "<<(uint32_t)t<<" cs: "<<(uint32_t)cs<<std::endl;
     return t;
 }
 
@@ -150,7 +148,6 @@ Transport::readData(TypeBase*& d)
     // if we reached here then we have a sync!
     assert(!isWaitSync());
     d = buildObject(fType);
-    //std::cout<<"object: "<<d<<std::endl;
     // waiting for the next object no matter the previous was successfull or not...
     setWaitSync();
 }
@@ -164,7 +161,6 @@ Transport::buildObject(UnitType fType)
     TypeBase* d = mTypeRegistry->instantiateForeignType(fType);
     // make sure the type was valid.. TBD: do a proper handling...
     if(d == NULL) {
-        //std::cout<<"could not instantiate ft"<<std::endl;
         return NULL;
     } else {
         // read the object
@@ -174,7 +170,6 @@ Transport::buildObject(UnitType fType)
         ChecksumType readChecksum;
         read(readChecksum);
         // and check the data 
-        //std::cout<<"checking cs: "<<(uint32_t)readChecksum<<" vs: "<<(uint32_t)computedChecksum<<std::endl;
         if(readChecksum != computedChecksum) {
             delete d;
             return NULL;
@@ -184,60 +179,48 @@ Transport::buildObject(UnitType fType)
     return d;
 }
 
-#if 0
-////////////////////////////////////////////////////////
-// Utility methods                                    //
-////////////////////////////////////////////////////////
-void FixEndianness(void* v)
-{
-}
-void swap_endiannes(int32_t& x)
-{
-    return;
-    x = (x>>24) | 
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-}
-void swap_endiannes(uint32_t& x)
-{
-    return;
-    x = (x>>24) | 
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-}
-void FixEndianness(void* )
-{
-}
-
-#endif
-
 ////////////////////////////////////////////////////////
 // Writing methods                                    //
 ////////////////////////////////////////////////////////
 inline void
+Transport::write(uint64_t intd)
+{
+    fixEndianness64(&intd);
+    write(&intd, sizeof(uint64_t));
+}
+
+inline void
+Transport::write(int64_t intd)
+{
+    fixEndianness64(&intd);
+    write(&intd, sizeof(int64_t));
+}
+
+inline void
 Transport::write(uint32_t intd)
 {
-    //FixEndianness<sizeof(uint32_t), C::Endianness>(NULL);
+    fixEndianness32(&intd);
     write(&intd, sizeof(uint32_t));
 }
 
 inline void
 Transport::write(int32_t intd)
 {
+    fixEndianness32(&intd);
     write(&intd, sizeof(int32_t));
 }
 
 inline void
 Transport::write(uint16_t intd)
 {
+    fixEndianness16(&intd);
     write(&intd, sizeof(uint16_t));
 }
 
 inline void
 Transport::write(int16_t intd)
 {
+    fixEndianness16(&intd);
     write(&intd, sizeof(int16_t));
 }
 
@@ -257,12 +240,14 @@ Transport::write(int8_t intd)
 inline void
 Transport::write(float floatd)
 {
+    fixEndianness32(&floatd);
     write(&floatd, sizeof(float));
 }
 
 inline void
 Transport::write(double doubled)
 {
+    fixEndianness64(&doubled);
     write(&doubled, sizeof(double));
 }
 
@@ -279,27 +264,46 @@ Transport::write(const std::string& stringd)
 // Reading methods                                    //
 ////////////////////////////////////////////////////////
 inline void
+Transport::read(uint64_t& intd)
+{
+    read(&intd, sizeof(uint64_t));
+    fixEndianness64(&intd);
+}
+
+inline void
+Transport::read(int64_t& intd)
+{
+    read(&intd, sizeof(int64_t));
+    fixEndianness64(&intd);
+}
+
+inline void
 Transport::read(uint32_t& intd)
 {
     read(&intd, sizeof(uint32_t));
+    fixEndianness32(&intd);
 }
 
 inline void
 Transport::read(int32_t& intd)
 {
     read(&intd, sizeof(int32_t));
+    fixEndianness32(&intd);
 }
+
 
 inline void
 Transport::read(uint16_t& intd)
 {
     read(&intd, sizeof(uint16_t));
+    fixEndianness16(&intd);
 }
 
 inline void
 Transport::read(int16_t& intd)
 {
     read(&intd, sizeof(int16_t));
+    fixEndianness16(&intd);
 }
 
 inline void
@@ -318,12 +322,14 @@ inline void
 Transport::read(float& floatd)
 {
     read(&floatd, sizeof(float));
+    fixEndianness32(&floatd);
 }
 
 inline void
 Transport::read(double& doubled)
 {
     read(&doubled, sizeof(double));
+    fixEndianness64(&doubled);
 }
 
 inline void
@@ -331,7 +337,6 @@ Transport::read(std::string& stringd)
 {
     uint32_t stringd_len;
     readChecksumed(stringd_len);
-    //std::cout<<"[len: "<<stringd_len<<"]";
     if(isWaitSync()) {
         return;
     }
@@ -407,6 +412,72 @@ Transport::writeChecksumed(const T& data)
     write(mWriteChecksum);
     // restore the saved checksum
     mWriteChecksum += curChecksum;
+}
+
+
+////////////////////////////////////////////////////////
+// Endianness                                         //
+////////////////////////////////////////////////////////
+template <ConfigEndianness E, int L> 
+inline void
+Transport::fixEndianness(void* ptr)
+{
+}
+
+template <> 
+inline void
+Transport::fixEndianness<ENDIAN_SWAP, 2>(void* ptr)
+{
+    uint16_t& v = *(uint16_t*)ptr;
+    v = (v>>8) | 
+        (v<<8);
+}
+
+template <> 
+inline void
+Transport::fixEndianness<ENDIAN_SWAP, 4>(void* ptr)
+{
+    uint32_t& v = *(uint32_t*)ptr;
+    v = (v>>24) | 
+        ((v<<8) & 0x00FF0000) |
+        ((v>>8) & 0x0000FF00) |
+        (v<<24);
+}
+
+template <> 
+inline void
+Transport::fixEndianness<ENDIAN_SWAP, 8>(void* ptr)
+{
+    uint64_t& v = *(uint64_t*)ptr;
+    v = (v>>56) | 
+        ((v<<40) & 0x00FF000000000000) |
+        ((v<<24) & 0x0000FF0000000000) |
+        ((v<<8)  & 0x000000FF00000000) |
+        ((v>>8)  & 0x00000000FF000000) |
+        ((v>>24) & 0x0000000000FF0000) |
+        ((v>>40) & 0x000000000000FF00) |
+        (v<<56);
+}
+
+template <typename C>
+void 
+ConfiguredTransport<C>::fixEndianness16(void* ptr)
+{
+    fixEndianness<C::Endianness,2>(ptr);
+}
+
+template <typename C>
+void 
+ConfiguredTransport<C>::fixEndianness32(void* ptr)
+{
+    fixEndianness<C::Endianness,4>(ptr);
+}
+
+template <typename C>
+void 
+ConfiguredTransport<C>::fixEndianness64(void* ptr)
+{
+    fixEndianness<C::Endianness,8>(ptr);
 }
 
 } // namespace ygg

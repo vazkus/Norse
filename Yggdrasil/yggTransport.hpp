@@ -32,29 +32,10 @@ protected:
         SYNC_BYTE = 0xAB
     };
 
-protected:
-    Transport();
-    void setTypeRegistry(TypeRegistry* registry);
-    void start(DeviceBase* device);
-    void stop();
-    // status checking
-    bool isReadable() const;
-    void setReadable();
-    bool isError() const;
-    void setError();
-    bool isStopped() const;
-    void setStopped();
-    bool isWaitSync() const;
-    void setWaitSync();
-    // writing serializable objects
-    void writeData(const TypeBase* d);
-    // reading serializable objects
-    void readData(TypeBase*& d);
-protected:
-    UnitType  readObjectType();
-    TypeBase* buildObject(UnitType fType);
-
 public:
+    // main API
+    void write(uint64_t intd);
+    void write(int64_t intd);
     void write(uint32_t intd);
     void write(int32_t intd);
     void write(uint16_t intd);
@@ -65,6 +46,8 @@ public:
     void write(double doubled);
     void write(const std::string& stringd);
 
+    void read(uint64_t& intd);
+    void read(int64_t& intd);
     void read(uint32_t& intd);
     void read(int32_t& intd);
     void read(uint16_t& intd);
@@ -79,8 +62,38 @@ public:
     template <class T> void writeChecksumed(const T& td);
 
 protected:
+    // API indented for friends and derived classes
+    Transport();
+    void setTypeRegistry(TypeRegistry* registry);
+    void start(DeviceBase* device);
+    void stop();
+    // status checking
+    bool isReadable() const;
+    void setReadable();
+    bool isError() const;
+    void setError();
+    bool isStopped() const;
+    void setStopped();
+    bool isWaitSync() const;
+    void setWaitSync();
+
+    // writing serializable objects
+    void writeData(const TypeBase* d);
+    // reading serializable objects
+    void readData(TypeBase*& d);
+    UnitType  readObjectType();
+    TypeBase* buildObject(UnitType fType);
+
+    template <ConfigEndianness E, int L> void fixEndianness(void* ptr);
+
+protected:
     void write(const void* ptr, uint32_t size);
     void read(void* ptr, uint32_t size);
+
+protected:
+    virtual void fixEndianness16(void* ptr) = 0;
+    virtual void fixEndianness32(void* ptr) = 0;
+    virtual void fixEndianness64(void* ptr) = 0;
 
 protected:
     DeviceBase*   mDevice;
@@ -90,13 +103,18 @@ protected:
     ChecksumType  mWriteChecksum;
 };
 
+
+
 template <typename C>
 class ConfiguredTransport : public Transport
 {
 protected:
-    template <class T> void swap_endiannes(T& t) {}
-    
+    virtual void fixEndianness16(void* ptr);
+    virtual void fixEndianness32(void* ptr);
+    virtual void fixEndianness64(void* ptr);
+private:
 };
+
 
 } // namespace ygg
 

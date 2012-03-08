@@ -69,7 +69,6 @@ public:
 private:
     VersionType mVersion;
     std::string mName;
-    // static 
 public:
     static UnitType id()
     {
