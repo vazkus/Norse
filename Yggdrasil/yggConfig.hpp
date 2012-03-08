@@ -27,9 +27,8 @@ namespace ygg {
     // Not supported yet
     enum ConfigEndianness
     {
-        ENDIAN_LITTLE,
-        ENDIAN_BIG,
-        ENDIAN_IGNORE
+        ENDIAN_NATIVE,
+        ENDIAN_SWAP,
     };
 
 } // namespace ygg
