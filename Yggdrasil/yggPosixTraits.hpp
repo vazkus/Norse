@@ -125,10 +125,13 @@ public:
         std::string mDeviceName;
     };
 public:
-    bool initialize(const Params& params)
+    PosixDevice(const Params& params)
     {
-        mDesc = ::open(params.mDeviceName.c_str(), O_RDWR | O_NOCTTY);
-        return mDesc != -1;
+        mDesc = ::open(params.mDeviceName.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_NOCTTY, 0644);
+    }
+    ~PosixDevice()
+    {
+        close();
     }
     void close()
     {

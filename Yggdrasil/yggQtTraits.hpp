@@ -79,10 +79,10 @@ public:
         QString mDeviceName;
     };
 public:
-    bool initialize(const Params& params)
+    QtDevice(const Params& params)
     {
         setFileName(params.mDeviceName);
-        return open(QIODevice::ReadWrite);
+        open(QIODevice::ReadWrite);
     }
     void close()
     {

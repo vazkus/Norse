@@ -105,7 +105,7 @@ public:
     };
 
 public:
-    bool initialize(const Params& params)
+    ChibiosDevice(const Params& params)
     {
         mSD = params.mSD;
         assert(mSD);
@@ -116,7 +116,6 @@ public:
         palSetPadMode(params.mTXPort, 
                       params.mTXMask, 
                       params.mTXMode);
-        return true;
     }
     void close()
     {

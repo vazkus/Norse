@@ -10,13 +10,15 @@
 namespace ygg 
 {
 
-template <typename S, typename I, typename C>
+template <typename S, typename I, typename L, typename C>
 class Manager
 {
 public:
     typedef S SystemTraits;
     typedef I InputHandler;
     typedef C Configuration;
+    typedef L Logger;
+    typedef ConfiguredTransport<C> Transport;
     typedef typename S::MutexType  Mutex;
     typedef typename S::CondType   Condition;
     typedef typename S::ThreadType Thread;
@@ -24,14 +26,13 @@ public:
     typedef typename S::Utils      Utils;
     typedef ygg::Serializer<S,C>   Serializer;
     typedef typename S::DeviceParamsType   DeviceParams;
-    typedef ygg::Deserializer<S,Serializer,I,C> Deserializer;
+    typedef ygg::Deserializer<S,Serializer,I,L,C> Deserializer;
 private:
     template <typename TM, ConfigManifest> class ManifestRequester;
 public:
     // API used for the service initialization/start/stop.
-    static void startService(DeviceBase* device, I* handler);
+    static void startService(Transport& transport, L& logger, I& handler);
     static void stopService();
-    static bool isFunctional();
     // API for sending receiving serializable objects.
     static void send(TypeBase* d);
     // API for type registration and checking
@@ -43,99 +44,95 @@ private:
     static TypeRegistry  sTypeRegistry;
     static Serializer*   sSerializer;
     static Deserializer* sDeserializer;
-    static ConfiguredTransport<C> sTransport;
 };
 
 /////////////////////////////////////////////////////////
 // static data member initialization area...           //
 /////////////////////////////////////////////////////////
-template<typename T, typename I, typename C> TypeRegistry Manager<T,I,C>::sTypeRegistry;
-template<typename T, typename I, typename C> Serializer<T,C>* Manager<T,I,C>::sSerializer = NULL;
-template<typename T, typename I, typename C> Deserializer<T,typename Manager<T,I,C>::Serializer,I,C>* 
-                                                          Manager<T,I,C>::sDeserializer = NULL;
-template<typename T, typename I, typename C> ConfiguredTransport<C> Manager<T,I,C>::sTransport;
+template<typename T, typename I, typename L, typename C> 
+TypeRegistry Manager<T,I,L,C>::sTypeRegistry;
+template<typename T, typename I, typename L, typename C> 
+Serializer<T,C>* Manager<T,I,L,C>::sSerializer = NULL;
+template<typename T, typename I, typename L, typename C> 
+Deserializer<T,typename Manager<T,I,L,C>::Serializer,I,L,C>* Manager<T,I,L,C>::sDeserializer = NULL;
 
 
 
 /////////////////////////////////////////////////////////
 // function definition area...                         //
 /////////////////////////////////////////////////////////
-template <typename S, typename I, typename C>
+template <typename S, typename I, typename L, typename C>
 void 
-Manager<S, I, C>::startService(DeviceBase* device, I* handler)
+Manager<S,I,L,C>::startService(Transport& transport, L& logger, I& handler)
 {
     // TBD: design is not very good, too many data types are 
     // interconnected.. Review this.
     sTypeRegistry.initialize();
     ManifestRequester<S,C::ManifestRequired>::start();
 
-    // open the device
-    sTransport.start(device);
-    if(sTransport.isError()) {
+    // start the transport
+    transport.start();
+    logger.start();
+    if(transport.isError()) {
         return;
     }
-    sTransport.setTypeRegistry(&sTypeRegistry);
+    transport.setTypeRegistry(&sTypeRegistry);
+    logger.setTypeRegistry(&sTypeRegistry);
     // construct the serializer 
     if(sSerializer == NULL) {
-        sSerializer = new Serializer(sTransport);
+        sSerializer = new Serializer(transport);
     }
     // construct the deserializer
     if(sDeserializer == NULL) {
-        sDeserializer = new Deserializer(sTransport, sTypeRegistry, 
-                                         *sSerializer, *handler);
+        sDeserializer = new Deserializer(transport, sTypeRegistry, 
+                                         logger, *sSerializer, handler);
     }
 }
 
-template <typename S, typename I, typename C>
+template <typename S, typename I, typename L, typename C>
 void 
-Manager<S, I, C>::stopService() 
+Manager<S,I,L,C>::stopService() 
 {
     if(sSerializer) {
+        sSerializer->stop();
         Serializer* temp = sSerializer;
         sSerializer = NULL;
         delete temp;
     }
     if(sDeserializer) {
+        sDeserializer->stop();
         Deserializer* temp = sDeserializer;
         sDeserializer = NULL;
         delete temp;
     }
-    sTransport.stop();
 }
 
-
-template <typename S, typename I, typename C>
-bool 
-Manager<S, I, C>::isFunctional()
-{
-    return !sTransport.isError() && !sTransport.isStopped();
-}
 
 // API for sending receiving serializable objects.
-template <typename S, typename I, typename C>
+template <typename S, typename I, typename L, typename C>
 void 
-Manager<S, I, C>::send(TypeBase* d)
+Manager<S,I,L,C>::send(TypeBase* d)
 {
-    if(sSerializer && isFunctional() && sTypeRegistry.isOwnTypeEnabled(d->id())) {
+    if(sSerializer && sSerializer->isFunctional() &&
+       sTypeRegistry.isOwnTypeEnabled(d->id())) {
         // should be a way to do this through a compile time assert.
         sSerializer->send(d);
     }
 }
 
 // API for type registration and checking
-template <typename S, typename I, typename C> 
+template <typename S, typename I, typename L, typename C>
 template<typename Type>
 bool 
-Manager<S, I, C>::registerType(const std::string& name, 
-                                                          const int version)
+Manager<S,I,L,C>::registerType(const std::string& name, const int version)
 {
     return sTypeRegistry.addType<Type>(name, version);
 }
 
-template <typename S, typename I, typename C> 
+template <typename S, typename I, typename L, typename C>
 template<typename T>
 bool 
-Manager<S, I, C>::isType(TypeBase* d)
+Manager<S,I,L,C>::isType(TypeBase* d)
 {
     return d->id() == TypeDescriptor<T>::id();
 }
@@ -144,9 +141,9 @@ Manager<S, I, C>::isType(TypeBase* d)
 //   Partial specialization of the class ManifestRe-   //
 //   quester for MANIFEST_REQUIRED configuration       //  
 /////////////////////////////////////////////////////////
-template <typename S, typename I, typename C> 
+template <typename S, typename I, typename L, typename C>
 template <typename DT>
-class Manager<S, I, C>::ManifestRequester<DT,MANIFEST_REQUIRED>
+class Manager<S,I,L,C>::ManifestRequester<DT,MANIFEST_REQUIRED>
 {
     typedef TypeRegistry::SystemCmdData SystemCmdData;
     typedef typename S::ThreadType      Thread;
@@ -158,10 +155,10 @@ public:
 private:
     static bool requestFunc(void*)
     {
-        if(Manager<S,I,C>::sTypeRegistry.isManifestReceved()) {
+        if(Manager<S,I,L,C>::sTypeRegistry.isManifestReceved()) {
             return true;
         }
-        Manager<S,I,C>::send(new SystemCmdData(SystemCmdData::CMD_MANIFEST_REQUEST));
+        Manager<S,I,L,C>::send(new SystemCmdData(SystemCmdData::CMD_MANIFEST_REQUEST));
         Thread::sleepMilliseconds(C::ManifestRequestMs);
         return false;
     }
@@ -171,11 +168,11 @@ private:
 //   Partial specialization of the class Manifest      //
 //   Requester for MANIFEST_IGNORE configuration       //  
 /////////////////////////////////////////////////////////
-template <typename S, typename I, typename C> 
+template <typename S, typename I, typename L, typename C>
 template <typename TH>
-class Manager<S, I, C>::ManifestRequester<TH,MANIFEST_IGNORE>
+class Manager<S,I,L,C>::ManifestRequester<TH,MANIFEST_IGNORE>
 {
-    typedef Manager<S,I,C> M;
+    typedef Manager<S,I,L,C> M;
 public:
     static void start() 
     {

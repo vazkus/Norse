@@ -9,65 +9,84 @@
 
 namespace ygg {
 
-template<typename T, typename S, typename I, typename C>
+template<typename T, typename S, typename I, typename L, typename C>
 class Deserializer
 {
     typedef typename T::MutexType   MutexType;
 private:
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
     Deserializer(Transport& transport, 
                  TypeRegistry& registry, 
+                 L& logger,
                  S& serializer,
                  I& handler);
+    bool isFunctional();
+    void stop();
 private:
     template<typename TH, ConfigCommunication>
     class Helper 
     {
     public:
-        Helper(Deserializer<T,S,I,C>& ds);
+        Helper(Deserializer<T,S,I,L,C>& ds);
     };
 private:
-    Transport& mTransport;
-    TypeRegistry&     mTypeRegistry;
+    Transport&    mTransport;
+    TypeRegistry& mTypeRegistry;
+    L&  mLogger;  
     S&  mSerializer;
     I&  mHandler;
     Helper<T,C::Deserialization> mHelper;
 };
 
-template <typename T, typename S, typename I, typename C>
-Deserializer<T, S, I, C>::Deserializer(Transport& transport, 
-                                       TypeRegistry& registry, 
-                                       S& serializer,
-                                       I& handler)
+template <typename T, typename S, typename I, typename L, typename C>
+Deserializer<T,S,I,L,C>::Deserializer(Transport& transport, 
+                                      TypeRegistry& registry, 
+                                      L& logger,
+                                      S& serializer,
+                                      I& handler)
  : mTransport(transport),
    mTypeRegistry(registry),
+   mLogger(logger),
    mSerializer(serializer),
    mHandler(handler),
    mHelper(*this)
 {
 }
 
+template <typename T, typename S, typename I, typename L, typename C>
+bool 
+Deserializer<T,S,I,L,C>::isFunctional()
+{
+    return !mTransport.isError() && !mTransport.isStopped();
+}
+template <typename T, typename S, typename I, typename L, typename C>
+void
+Deserializer<T,S,I,L,C>::stop()
+{
+    mTransport.stop();
+}
+
 /////////////////////////////////////////////////////////
 //   partial specialization of the helper class for    //
 //   COMMUNICATION_BLOCKING configuration              //  
 /////////////////////////////////////////////////////////
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
-class Deserializer<T,S,I,C>::Helper<TH,COMMUNICATION_BLOCKING>
+class Deserializer<T,S,I,L,C>::Helper<TH,COMMUNICATION_BLOCKING>
 {
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
     typedef typename TypeRegistry::ManifestData  ManifestDataType;
     typedef typename TypeRegistry::SystemCmdData SysCmdDataType;
 public:
-    Helper(Deserializer<T,S,I,C>& ds);
+    Helper(Deserializer<T,S,I,L,C>& ds);
     void reset();
 private:
-    Deserializer<T,S,I,C>& mOwner;
+    Deserializer<T,S,I,L,C>& mOwner;
 };
 
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
-Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer<T,S,I,C>& ds)
+Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer<T,S,I,L,C>& ds)
   : mOwner(ds)
 {
     // find a proper break condition...
@@ -80,6 +99,11 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer<T
         if(d->id() == TypeDescriptor<ManifestDataType>::id()) {
             ManifestDataType* md = (ManifestDataType*)d;
             mOwner.mTypeRegistry.applyManifest(md);
+            // several manifests may be received at during the handshake,
+            // log the first only, the others are redundant...
+            if(mOwner.mTypeRegistry.isManifestReceved()) {
+                mOwner.mLogger.writeData(md);
+            }
         } else
         if(d->id() == TypeDescriptor<SysCmdDataType>::id()) {
             SysCmdDataType* sd = (SysCmdDataType*)d;
@@ -90,15 +114,17 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer<T
         } else
         if(mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {
             mOwner.mHandler.process(d);
+            // write the object to the log...
+            mOwner.mLogger.writeData(d);
         }
         delete d;
     }
 }
 
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
 void
-Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_BLOCKING>::reset()
+Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_BLOCKING>::reset()
 {
 }
 
@@ -108,11 +134,11 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_BLOCKING>::reset()
 //   partial specialization of the helper class for    //
 //   COMMUNICATION_NONBLOCKING configuration           //  
 /////////////////////////////////////////////////////////
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
-class Deserializer<T,S,I,C>::Helper<TH,COMMUNICATION_NONBLOCKING>
+class Deserializer<T,S,I,L,C>::Helper<TH,COMMUNICATION_NONBLOCKING>
 {
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
     typedef typename T::MutexType    MutexType;
     typedef typename T::CondType     CondType;
     typedef typename T::ThreadType   ThreadType;
@@ -121,20 +147,20 @@ class Deserializer<T,S,I,C>::Helper<TH,COMMUNICATION_NONBLOCKING>
     typedef typename TypeRegistry::ManifestData  ManifestDataType;
     typedef typename TypeRegistry::SystemCmdData SysCmdDataType;
 public:
-    Helper(Deserializer<T,S,I,C>& ds);
+    Helper(Deserializer<T,S,I,L,C>& ds);
     void reset();
     static bool deserializerFunc(void*);
     static bool inputHanderFunc(void*);
 private:
-    Deserializer<T,S,I,C>& mOwner;
+    Deserializer<T,S,I,L,C>& mOwner;
     QueueType   mInputQueue;
     ThreadType  mDeserializer;
     ThreadType  mHandlerThread;
 };
 
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
-Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::Helper(Deserializer<T,S,I,C>& ds)
+Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::Helper(Deserializer<T,S,I,L,C>& ds)
   : mOwner(ds),
     mInputQueue(C::InputQueueSize),
     mDeserializer("Deserializer", 1536, C::BasePriority+1, deserializerFunc, NULL, this),
@@ -142,18 +168,18 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::Helper(Deserialize
 {
 }
 
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
 void
-Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::reset()
+Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::reset()
 {
     mOwner.mInputQueue.clear();
 }
 
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
 bool 
-Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::deserializerFunc(void* param)
+Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::deserializerFunc(void* param)
 {
     Helper<TH,COMMUNICATION_NONBLOCKING>* h = (Helper<TH,COMMUNICATION_NONBLOCKING>*)param;
     TypeBase* d = NULL;
@@ -165,10 +191,10 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::deserializerFunc(v
     return false;
 }
 
-template <typename T, typename S, typename I, typename C>
+template <typename T, typename S, typename I, typename L, typename C>
 template <typename TH>
 bool 
-Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(void* param)
+Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(void* param)
 {
     Helper<TH,COMMUNICATION_NONBLOCKING>* h = (Helper<TH,COMMUNICATION_NONBLOCKING>*)param;
     QueueTypeList dlist;
@@ -180,6 +206,11 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(vo
         if(d->id() == TypeDescriptor<ManifestDataType>::id()) {
             ManifestDataType* md = (ManifestDataType*)d;
             h->mOwner.mTypeRegistry.applyManifest(md);
+            // several manifests may be received at during the handshake,
+            // log the first only, the others are redundant...
+            if(h->mOwner.mTypeRegistry.isManifestReceved()) {
+                h->mOwner.mLogger.writeData(md);
+            }
         } else
         if(d->id() == TypeDescriptor<SysCmdDataType>::id()) {
             SysCmdDataType* sd = (SysCmdDataType*)d;
@@ -190,6 +221,8 @@ Deserializer<T,S,I,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(vo
         } else
         if(h->mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {
             h->mOwner.mHandler.process(d);
+            // write the object to the log...
+            h->mOwner.mLogger.writeData(d);
         }
         delete d;
     }

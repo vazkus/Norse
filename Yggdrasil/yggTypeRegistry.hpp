@@ -14,7 +14,7 @@ namespace ygg
 
 class TypeRegistry 
 {
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
 private:
     class ManifestData : public Serializable<ManifestData>
     {

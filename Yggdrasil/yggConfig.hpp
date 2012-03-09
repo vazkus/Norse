@@ -24,7 +24,8 @@ namespace ygg {
         ENDPOINT_RECEIVER,
         ENDPOINT_SENDER_RECEIVER
     };
-    // Not supported yet
+    // Supported:
+    //    All tested.
     enum ConfigEndianness
     {
         ENDIAN_NATIVE,

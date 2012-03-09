@@ -11,9 +11,9 @@ class DeviceBase;
 
 class Transport 
 {
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
     template <typename ST, typename SC> friend class Serializer;
-    template <typename DT, typename DS, typename DI, typename CC> friend class Deserializer;
+    template <typename DT, typename DS, typename DI, typename DL, typename DC> friend class Deserializer;
     friend class TypeRegistry;
 
 protected:
@@ -63,9 +63,9 @@ public:
 
 protected:
     // API indented for friends and derived classes
-    Transport();
+    Transport(DeviceBase& device);
     void setTypeRegistry(TypeRegistry* registry);
-    void start(DeviceBase* device);
+    void start();
     void stop();
     // status checking
     bool isReadable() const;
@@ -96,7 +96,7 @@ protected:
     virtual void fixEndianness64(void* ptr) = 0;
 
 protected:
-    DeviceBase*   mDevice;
+    DeviceBase&   mDevice;
     DeviceState   mState;
     TypeRegistry* mTypeRegistry;
     ChecksumType  mReadChecksum;
@@ -108,11 +108,12 @@ protected:
 template <typename C>
 class ConfiguredTransport : public Transport
 {
+public:
+    ConfiguredTransport(DeviceBase& device);
 protected:
     virtual void fixEndianness16(void* ptr);
     virtual void fixEndianness32(void* ptr);
     virtual void fixEndianness64(void* ptr);
-private:
 };
 
 

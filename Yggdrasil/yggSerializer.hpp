@@ -14,8 +14,9 @@ class Serializer
 {
     typedef typename T::MutexType   MutexType;
 private:
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
     Serializer(Transport& transport);
+    bool isFunctional();
 private:
     template<typename TH, ConfigCommunication>
     class Helper 
@@ -28,6 +29,7 @@ private:
 public:
     void send(TypeBase* d);
     void reset();
+    void stop();
 private:
     Transport&  mTransport;
     Helper<T,C::Serialization> mHelper;
@@ -44,6 +46,15 @@ Serializer<T,C>::Serializer(Transport& transport)
    mHelper(*this)
 {
 }
+
+template <typename T, typename C>
+bool 
+Serializer<T, C>::isFunctional()
+{
+    return !mTransport.isError() && !mTransport.isStopped();
+
+}
+
 template <typename T, typename C>
 void
 Serializer<T,C>::send(TypeBase* d)
@@ -58,6 +69,13 @@ Serializer<T,C>::reset()
     mHelper.reset();
 }
 
+template <typename T, typename C>
+void 
+Serializer<T,C>::stop()
+{
+    mTransport.stop();
+}
+
 
 /////////////////////////////////////////////////////////
 //   Partial specialization of the helper class for    //
@@ -67,7 +85,7 @@ template <typename T, typename C>
 template <typename TH>
 class Serializer<T,C>::Helper<TH,COMMUNICATION_BLOCKING>
 {
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
 public:
     Helper(Serializer<T,C>& s);
     void send(TypeBase* d);
@@ -108,7 +126,7 @@ template <typename T, typename C>
 template <typename TH>
 class Serializer<T,C>::Helper<TH,COMMUNICATION_NONBLOCKING>
 {
-    template <typename MT, typename MI, typename MC> friend class Manager;
+    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
     typedef typename T::MutexType    MutexType;
     typedef typename T::CondType     CondType;
     typedef typename T::ThreadType   ThreadType;

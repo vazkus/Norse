@@ -10,8 +10,8 @@ namespace ygg
 {
 
 inline
-Transport::Transport()
- : mDevice(NULL),
+Transport::Transport(DeviceBase& device)
+ : mDevice(device),
    mState(DEVICE_STOPPED),
    mTypeRegistry(NULL),
    mReadChecksum(0),
@@ -25,10 +25,9 @@ Transport::setTypeRegistry(TypeRegistry* registry)
 }
 
 inline void 
-Transport::start(DeviceBase* device)
+Transport::start()
 {
-    mDevice = device;
-    if(mDevice->isOpen()) {
+    if(mDevice.isOpen()) {
         mState = DEVICE_WAITING_SYNC;
     } else {
         mState = DEVICE_ERROR;
@@ -355,7 +354,7 @@ Transport::write(const void* ptr, uint32_t size)
 {
     uint8_t* bptr = (uint8_t*)ptr;
     for(uint32_t i = 0; i < size; ++i) {
-        if(!mDevice->write(bptr+i, 1)) {
+        if(!mDevice.write(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
         }
@@ -368,7 +367,7 @@ Transport::read(void* ptr, uint32_t size)
 {
     uint8_t* bptr = (uint8_t*)ptr;
     for(uint32_t i = 0; i < size; ++i) {
-        if(!mDevice->read(bptr+i, 1)) {
+        if(!mDevice.read(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
         }
@@ -420,7 +419,7 @@ Transport::writeChecksumed(const T& data)
 ////////////////////////////////////////////////////////
 template <ConfigEndianness E, int L> 
 inline void
-Transport::fixEndianness(void* ptr)
+Transport::fixEndianness(void*)
 {
 }
 
@@ -478,6 +477,12 @@ void
 ConfiguredTransport<C>::fixEndianness64(void* ptr)
 {
     fixEndianness<C::Endianness,8>(ptr);
+}
+
+template <typename C>
+ConfiguredTransport<C>::ConfiguredTransport(DeviceBase& device)
+ : Transport(device)
+{
 }
 
 } // namespace ygg
