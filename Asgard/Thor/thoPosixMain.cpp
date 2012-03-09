@@ -5,7 +5,7 @@
 #include <string>
 
 using namespace std;
-struct PosixConfig
+struct ThorPosixConfig
 {
     // configuration of the serialization system
     const static ygg::ConfigCommunication   Serialization    = ygg::COMMUNICATION_NONBLOCKING;
@@ -20,8 +20,23 @@ struct PosixConfig
 };
 class PCInputHandler;
 
-typedef ygg::Manager<ygg::PosixSystemTraits, PCInputHandler, PosixConfig> sm;
+class DummyLogger
+{
+public:
+    void setTypeRegistry(ygg::TypeRegistry*){}
+    void start(){}
+    void stop(){}
+    void writeData(const ygg::TypeBase*){}
+    void readData(ygg::TypeBase*&){}
 
+};
+
+typedef ygg::Manager<
+                     ygg::PosixSystemTraits, 
+                     PCInputHandler, 
+                     ygg::ConfiguredTransport<ThorPosixConfig>, 
+                     ThorPosixConfig
+                    > sm;
 
 class PCInputHandler
 {
@@ -67,13 +82,26 @@ int main()
     PCInputHandler handler;
 
     // specifying uart device name and create the device...
-    sm::DeviceParams params= { "/dev/ttyUSB1" };
-    sm::Device device;
-    // if successfull -> start the service...
-    if(device.initialize(params)) {
-        // start the service
-        sm::startService(&device, &handler);
+    sm::DeviceParams params= { "/dev/ttyUSB0" };
+    sm::Device device(params);
+    if(!device.isOpen()) {
+        return 1;
     }
+    // setup the transport
+    sm::Transport transport(device);
+
+
+    // now initialize the log device... 
+    sm::DeviceParams lparams= { "logfile.out" };
+    sm::Device ldevice(lparams);
+    if(!ldevice.isOpen()) {
+        return 1;
+    }
+
+    sm::Logger logger(ldevice);
+
+    // start the service
+    sm::startService(transport, logger, handler);
 
     // add a thread that sends ping once in a while (set to ~5hz)
     sm::Thread pinger("Pinger", 0, 0, pingerFunc, NULL, NULL);

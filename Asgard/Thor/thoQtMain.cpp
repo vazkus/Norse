@@ -26,12 +26,24 @@ int main( int argc, char ** argv )
     sm::InputHandler handler(&mw);
     // specifying uart device name and create the device...
     sm::DeviceParams params = { "/dev/ttyUSB0" };
-    sm::Device device;
-    // if successfull -> start the service...
-    if(device.initialize(params)) {
-        // start the service
-        sm::startService(&device, &handler);
+    sm::Device device(params);
+    if(!device.isOpen()) {
+        return 1;
     }
+    // setup the transport
+    sm::Transport transport(device);
+
+    // now initialize the log device... 
+    sm::DeviceParams lparams= { "logfile.out" };
+    sm::Device ldevice(lparams);
+    if(!ldevice.isOpen()) {
+        return 1;
+    }
+
+    sm::Logger logger(ldevice);
+
+    // start the service
+    sm::startService(transport, logger, handler);
 
     return a.exec();
 }

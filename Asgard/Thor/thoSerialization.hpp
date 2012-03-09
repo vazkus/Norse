@@ -8,7 +8,7 @@
 namespace thor {
 
 class InputHandler;
-struct RoboGraphConfig
+struct ThorQtConfig
 {
     // configuration of the serialization system
     const static ygg::ConfigCommunication   Serialization    = ygg::COMMUNICATION_NONBLOCKING;
@@ -22,7 +22,12 @@ struct RoboGraphConfig
     const static int ManifestRequestMs = 1000;
 };
 
-typedef ygg::Manager<ygg::QtSystemTraits, InputHandler, RoboGraphConfig> sm;
+typedef ygg::Manager<
+                     ygg::QtSystemTraits, 
+                     InputHandler,  
+                     ygg::ConfiguredTransport<ThorQtConfig>, 
+                     ThorQtConfig
+                   > sm;
 
 }
 
