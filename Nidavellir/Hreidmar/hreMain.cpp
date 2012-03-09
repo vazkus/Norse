@@ -1,5 +1,7 @@
 #include "hreSerialization.hpp"
 #include "ratSerializableTypes.hpp"
+#include "broLISAccelerometer.hpp"
+
 #include <stdio.h>
 #include <math.h>
 
@@ -19,11 +21,6 @@ void __cxa_atexit(void (*arg1)(void*), void* arg2, void* arg3)
 class ChInputHandler
 {
 public:
-    ChInputHandler()
-    {
-    }
-
-public:
     void process(ygg::TypeBase* d)
     {
         // main loop
@@ -42,11 +39,24 @@ public:
     }
 };
 
+class ChLogger
+{
+public:
+    void setTypeRegistry(ygg::TypeRegistry*){}
+    void start(){}
+    void stop(){}
+    void writeData(const ygg::TypeBase*){}
+    void readData(ygg::TypeBase*&){}
+
+};
+
 int main(void) 
 {
     // initializie ChibiOS
     halInit();
     System::Init();
+
+    bro::LISAccelerometer accSensor;
 
     // register some useful and dummy types...
     sm::registerType<rat::BasicType<float, 2> >("BasicType4", 1);
@@ -54,7 +64,10 @@ int main(void)
     sm::registerType<rat::StrCmdData>("StrCmdData", 1);
     sm::registerType<rat::PingData>("PingData", 1);
 
+    // instantiate the input-handler 
+    sm::InputHandler handler;
 
+    // setup the serial device
     sm::DeviceParams params = 
     {
         &SD2, 
@@ -62,14 +75,22 @@ int main(void)
         GPIOA, 3, PAL_MODE_ALTERNATE(7), // for RX
         GPIOA, 2, PAL_MODE_ALTERNATE(7)  // for TX
     };
-    // instantiate the input-handler 
-    sm::InputHandler handler;
+    sm::Device device(params);
+    if(!device.isOpen()) {
+        return 1;
+    }
+    // setup the transport
+    sm::Transport transport(device);
+    sm::Logger logger;
     // start the service
-    sm::startService(params, handler);
+    sm::startService(transport, logger, handler);
+    
+
     // Note that the serialization service is configured as NONBLOCKING
     // so we need while(true) trap so that the application won't quit...
     while (true) {
         chThdSleepMilliseconds(50);
+        sm::send(new rat::LISData(accSensor.sample()));
     }
 
     return 0;

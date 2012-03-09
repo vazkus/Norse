@@ -25,7 +25,8 @@ struct ChibiosConfig
     const static int ManifestRequestMs = 1000;
 };
 class ChInputHandler;
+class ChLogger;
 
-typedef ygg::Manager<ygg::ChibiosSystemTraits, ChInputHandler, ChibiosConfig> sm;
+typedef ygg::Manager<ygg::ChibiosSystemTraits, ChInputHandler, ChLogger, ChibiosConfig> sm;
 
 #endif //HRE_SERIALIZATIN_HPP
