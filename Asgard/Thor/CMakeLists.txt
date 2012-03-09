@@ -22,7 +22,6 @@ SET(tho_qt_sources     thoMainWindow.cpp
 
 SET(tho_qt_moc_headers thoMainWindow.hpp 
                        thoInputHandler.hpp 
-                       thoSerialization.hpp
    )
 
 QT4_WRAP_CPP(tho_qt_moc_sources ${tho_qt_moc_headers})
