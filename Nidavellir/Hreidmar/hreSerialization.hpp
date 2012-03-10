@@ -7,7 +7,7 @@
 #include "test.h"
 #include "evtimer.h"
 // yggdrasil
-#include "yggManager.hpp"
+#include "yggSerializationManager.hpp"
 #include "yggChibiosTraits.hpp"
 #include "yggConfig.hpp"
 
@@ -26,6 +26,11 @@ struct ChibiosConfig
 };
 class ChInputHandler;
 
-typedef ygg::Manager<ygg::ChibiosSystemTraits, ChInputHandler, ygg::DummyTransport, ChibiosConfig> sm;
+typedef ygg::SerializationManager<
+                                   ygg::ChibiosSystemTraits, 
+                                   ChInputHandler, 
+                                   ygg::DummyTransport, 
+                                   ChibiosConfig
+                                 > sm;
 
 #endif //HRE_SERIALIZATIN_HPP

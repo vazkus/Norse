@@ -1,4 +1,4 @@
-#include "yggManager.hpp"
+#include "yggSerializationManager.hpp"
 #include "yggReplayManager.hpp"
 #include "yggPosixTraits.hpp"
 #include "ratSerializableTypes.hpp"
@@ -25,7 +25,7 @@ class PCTerminator
 {
 };
 
-typedef ygg::Manager<
+typedef ygg::SerializationManager<
                      ygg::PosixSystemTraits, 
                      PCInputHandler, 
                      ygg::ConfiguredTransport<ThorPosixConfig>, 

@@ -1,7 +1,7 @@
 #ifndef THO_SERIALIALIZATION_HPP
 #define THO_SERIALIALIZATION_HPP
 
-#include "yggManager.hpp"
+#include "yggSerializationManager.hpp"
 #include "yggTypes.hpp"
 #include "yggQtTraits.hpp"
 
@@ -22,7 +22,7 @@ struct ThorQtConfig
     const static int ManifestRequestMs = 1000;
 };
 
-typedef ygg::Manager<
+typedef ygg::SerializationManager<
                      ygg::QtSystemTraits, 
                      InputHandler,  
                      ygg::ConfiguredTransport<ThorQtConfig>, 

@@ -11,7 +11,7 @@ namespace ygg
 {
 
 template <typename S, typename I, typename L, typename C>
-class Manager
+class SerializationManager
 {
 public:
     typedef S SystemTraits;
@@ -50,11 +50,11 @@ private:
 // static data member initialization area...           //
 /////////////////////////////////////////////////////////
 template<typename S, typename I, typename L, typename C> 
-TypeRegistry Manager<S,I,L,C>::sTypeRegistry;
+TypeRegistry SerializationManager<S,I,L,C>::sTypeRegistry;
 template<typename S, typename I, typename L, typename C> 
-Serializer<S,C>* Manager<S,I,L,C>::sSerializer = NULL;
+Serializer<S,C>* SerializationManager<S,I,L,C>::sSerializer = NULL;
 template<typename S, typename I, typename L, typename C> 
-Deserializer<S,typename Manager<S,I,L,C>::Serializer,I,L,C>* Manager<S,I,L,C>::sDeserializer = NULL;
+Deserializer<S,typename SerializationManager<S,I,L,C>::Serializer,I,L,C>* SerializationManager<S,I,L,C>::sDeserializer = NULL;
 
 
 /////////////////////////////////////////////////////////
@@ -62,7 +62,7 @@ Deserializer<S,typename Manager<S,I,L,C>::Serializer,I,L,C>* Manager<S,I,L,C>::s
 /////////////////////////////////////////////////////////
 template <typename S, typename I, typename L, typename C>
 void 
-Manager<S,I,L,C>::startService(Transport& transport, L& logger, I& handler)
+SerializationManager<S,I,L,C>::startService(Transport& transport, L& logger, I& handler)
 {
     // TBD: design is not very good, too many data types are 
     // interconnected.. Review this.
@@ -90,7 +90,7 @@ Manager<S,I,L,C>::startService(Transport& transport, L& logger, I& handler)
 
 template <typename S, typename I, typename L, typename C>
 void 
-Manager<S,I,L,C>::stopService() 
+SerializationManager<S,I,L,C>::stopService() 
 {
     if(sSerializer) {
         sSerializer->stop();
@@ -110,7 +110,7 @@ Manager<S,I,L,C>::stopService()
 // API for sending receiving serializable objects.
 template <typename S, typename I, typename L, typename C>
 void 
-Manager<S,I,L,C>::send(TypeBase* d)
+SerializationManager<S,I,L,C>::send(TypeBase* d)
 {
     if(sSerializer && sSerializer->isFunctional() &&
        sTypeRegistry.isOwnTypeEnabled(d->id())) {
@@ -123,7 +123,7 @@ Manager<S,I,L,C>::send(TypeBase* d)
 template <typename S, typename I, typename L, typename C>
 template<typename Type>
 bool 
-Manager<S,I,L,C>::registerType(const std::string& name, const int version)
+SerializationManager<S,I,L,C>::registerType(const std::string& name, const int version)
 {
     return sTypeRegistry.addType<Type>(name, version);
 }
@@ -131,7 +131,7 @@ Manager<S,I,L,C>::registerType(const std::string& name, const int version)
 template <typename S, typename I, typename L, typename C>
 template<typename Type>
 bool 
-Manager<S,I,L,C>::isType(TypeBase* d)
+SerializationManager<S,I,L,C>::isType(TypeBase* d)
 {
     return d->id() == TypeDescriptor<Type>::id();
 }
@@ -142,7 +142,7 @@ Manager<S,I,L,C>::isType(TypeBase* d)
 /////////////////////////////////////////////////////////
 template <typename S, typename I, typename L, typename C>
 template <typename DT>
-class Manager<S,I,L,C>::ManifestRequester<DT,MANIFEST_REQUIRED>
+class SerializationManager<S,I,L,C>::ManifestRequester<DT,MANIFEST_REQUIRED>
 {
     typedef TypeRegistry::SystemCmdData SystemCmdData;
     typedef typename S::ThreadType      Thread;
@@ -154,10 +154,10 @@ public:
 private:
     static bool requestFunc(void*)
     {
-        if(Manager<S,I,L,C>::sTypeRegistry.isManifestReceved()) {
+        if(SerializationManager<S,I,L,C>::sTypeRegistry.isManifestReceved()) {
             return true;
         }
-        Manager<S,I,L,C>::send(new SystemCmdData(SystemCmdData::CMD_MANIFEST_REQUEST));
+        SerializationManager<S,I,L,C>::send(new SystemCmdData(SystemCmdData::CMD_MANIFEST_REQUEST));
         Thread::sleepMilliseconds(C::ManifestRequestMs);
         return false;
     }
@@ -169,9 +169,9 @@ private:
 /////////////////////////////////////////////////////////
 template <typename S, typename I, typename L, typename C>
 template <typename TH>
-class Manager<S,I,L,C>::ManifestRequester<TH,MANIFEST_IGNORE>
+class SerializationManager<S,I,L,C>::ManifestRequester<TH,MANIFEST_IGNORE>
 {
-    typedef Manager<S,I,L,C> M;
+    typedef SerializationManager<S,I,L,C> M;
 public:
     static void start() 
     {

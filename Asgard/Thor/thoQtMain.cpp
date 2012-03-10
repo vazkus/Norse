@@ -15,7 +15,7 @@ int main( int argc, char ** argv )
     thor::MainWindow mw;
     mw.show();
 
-    // Serialization Manager...
+    // register used types...
     sm::registerType<rat::StrCmdData>("StrCmdData", 1);
     sm::registerType<rat::BasicType<uint32_t, 6> >("BasicType2", 1);
     sm::registerType<rat::BasicType<int32_t, 3> >("BasicType3", 1);
