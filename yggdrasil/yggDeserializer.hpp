@@ -16,12 +16,14 @@ class Deserializer
 public:
     Deserializer(Transport& transport, 
                  TypeRegistry& registry, 
-                 L& logger,
                  S& serializer,
                  I& handler);
     bool isFunctional();
     void stop();
     void sendManifestRequest();
+    // logger accessor/mutator API 
+    L&   getLogger();
+    void setLogger(L& logger);
 private:
     template<typename TH, ConfigCommunication>
     class Helper 
@@ -32,21 +34,23 @@ private:
 private:
     Transport&    mTransport;
     TypeRegistry& mTypeRegistry;
-    L&  mLogger;  
+    L   mLogger;  
     S&  mSerializer;
     I&  mHandler;
     Helper<T,C::Deserialization> mHelper;
 };
 
+
+/////////////////////////////////////////////////////////
+// function definition area...                         //
+/////////////////////////////////////////////////////////
 template <typename T, typename S, typename I, typename L, typename C>
 Deserializer<T,S,I,L,C>::Deserializer(Transport& transport, 
                                       TypeRegistry& registry, 
-                                      L& logger,
                                       S& serializer,
                                       I& handler)
  : mTransport(transport),
    mTypeRegistry(registry),
-   mLogger(logger),
    mSerializer(serializer),
    mHandler(handler),
    mHelper(*this)
@@ -73,6 +77,21 @@ Deserializer<T,S,I,L,C>::sendManifestRequest()
 {
     mSerializer.reset();
     mSerializer.send(mTypeRegistry.extractManifest());
+}
+
+template <typename T, typename S, typename I, typename L, typename C>
+L&
+Deserializer<T,S,I,L,C>::getLogger()
+{
+    return mLogger;
+}
+
+template <typename T, typename S, typename I, typename L, typename C>
+void
+Deserializer<T,S,I,L,C>::setLogger(L& logger)
+{
+    // make sure this is thread safe!
+    mLogger.swap(logger);
 }
 
 /////////////////////////////////////////////////////////

@@ -77,11 +77,10 @@ ReplayManager<S,I,T,C>::startReplay(Transport& transport, I& handler, T& termina
     
     // create static instances
     static Serializer sSerializer(transport);
-    static Logger     sLogger;
     
     // construct the deserializer
     self().mDeserializer = new Deserializer(transport, self().mTypeRegistry, 
-                                            sLogger, sSerializer, handler);
+                                            sSerializer, handler);
 }
 
 

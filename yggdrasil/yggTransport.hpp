@@ -11,13 +11,14 @@ class DeviceBase;
 
 class Transport 
 {
+    template <typename T, typename S, typename I, typename L, typename C> friend class Deserializer;
 protected:
     typedef TypeBase::UnitType  UnitType;
     typedef uint32_t            SyncType;
     typedef UnitType            ChecksumType;
     enum DeviceState 
     {
-        DEVICE_READABLE,
+        DEVICE_FUNCTIONAL,
         DEVICE_STOPPED,
         DEVICE_WAITING_SYNC,
         DEVICE_ERROR
@@ -58,13 +59,13 @@ public:
 
 public:
     // API indented for friends and derived classes
-    Transport(DeviceBase* device);
+    Transport(DeviceBase* device = NULL);
     void setTypeRegistry(TypeRegistry* registry);
     void start();
     void stop();
     // status checking
-    bool isReadable() const;
-    void setReadable();
+    bool isFunctional() const;
+    void setFunctional();
     bool isError() const;
     void setError();
     bool isStopped() const;
@@ -88,6 +89,7 @@ protected:
     virtual void fixEndianness16(void* ptr) = 0;
     virtual void fixEndianness32(void* ptr) = 0;
     virtual void fixEndianness64(void* ptr) = 0;
+    virtual void swap(Transport& transport);
 
 protected:
     DeviceBase*   mDevice;
@@ -103,7 +105,7 @@ template <typename C>
 class ConfiguredTransport : public Transport
 {
 public:
-    ConfiguredTransport(DeviceBase* device);
+    ConfiguredTransport(DeviceBase* device = NULL);
 protected:
     virtual void fixEndianness16(void* ptr);
     virtual void fixEndianness32(void* ptr);
@@ -122,11 +124,11 @@ public:
     {}
     void stop()
     {}
-    bool isReadable() const
+    bool isFunctional() const
     { 
         return false; 
     }
-    void setReadable()
+    void setFunctional()
     {}
     bool isError() const
     { 

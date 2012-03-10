@@ -30,9 +30,12 @@ public:
 
 public:
     // API used for the service initialization/start/stop.
-    static void startService(Transport& transport, L& logger, I& handler);
+    static void startService(Transport& transport, I& handler);
     static void stopService();
-    // API for sending receiving serializable objects.
+    // API usef for logging
+    static void startLogger(L& logger);
+    static void stopLogger();
+    // API for sending serializable objects.
     static void send(TypeBase* d);
     // API for type registration and checking
     template<typename T> static bool registerType(const std::string& name, 
@@ -67,7 +70,7 @@ SerializationManager<S,I,L,C>::self()
 /////////////////////////////////////////////////////////
 template <typename S, typename I, typename L, typename C>
 void 
-SerializationManager<S,I,L,C>::startService(Transport& transport, L& logger, I& handler)
+SerializationManager<S,I,L,C>::startService(Transport& transport, I& handler)
 {
     // TBD: design is not very good, too many data types are 
     // interconnected.. Review this.
@@ -76,12 +79,10 @@ SerializationManager<S,I,L,C>::startService(Transport& transport, L& logger, I& 
 
     // start the transport
     transport.start();
-    logger.start();
     if(transport.isError()) {
         return;
     }
     transport.setTypeRegistry(&self().mTypeRegistry);
-    logger.setTypeRegistry(&self().mTypeRegistry);
     // construct the serializer 
     if(self().mSerializer == NULL) {
         self().mSerializer = new Serializer(transport);
@@ -89,8 +90,36 @@ SerializationManager<S,I,L,C>::startService(Transport& transport, L& logger, I& 
     // construct the deserializer
     if(self().mDeserializer == NULL) {
         self().mDeserializer = new Deserializer(transport, self().mTypeRegistry, 
-                                                logger, *self().mSerializer, handler);
+                                                *self().mSerializer, handler);
     }
+}
+
+template <typename S, typename I, typename L, typename C>
+void 
+SerializationManager<S,I,L,C>::startLogger(Logger& logger)
+{
+    // TBD: add execution status logging...
+    if(self().mDeserializer == NULL) {
+        return;
+    }
+    // set type registry...
+    logger.setTypeRegistry(&self().mTypeRegistry);
+    // write manifest
+    logger.start();
+    TypeBase* d = self().mTypeRegistry.extractManifest();
+    logger.writeData(d);
+    delete d;
+    logger.stop();
+    // attach to deserializer
+    self().mDeserializer->setLogger(logger);
+    self().mDeserializer->getLogger().start();
+}
+
+template <typename S, typename I, typename L, typename C>
+void 
+SerializationManager<S,I,L,C>::stopLogger() 
+{
+    self().mDeserializer()->getLogger().stop();
 }
 
 template <typename S, typename I, typename L, typename C>

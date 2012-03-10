@@ -136,7 +136,7 @@ TypeRegistry::ManifestData::read(Transport& transport)
 {
     uint32_t dSize;
     transport.readChecksumed(dSize);
-    if(transport.isReadable()) {
+    if(transport.isFunctional()) {
         for(uint32_t i = 0; i < dSize; ++i) {
             mDescriptorRecords.push_back(DescriptorRecord());
             DescriptorRecord& drecord = mDescriptorRecords.back();

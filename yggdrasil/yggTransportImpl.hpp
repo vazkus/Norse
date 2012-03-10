@@ -27,7 +27,7 @@ Transport::setTypeRegistry(TypeRegistry* registry)
 inline void 
 Transport::start()
 {
-    if(mDevice->isOpen()) {
+    if(mDevice && mDevice->isOpen()) {
         mState = DEVICE_WAITING_SYNC;
     } else {
         mState = DEVICE_ERROR;
@@ -37,19 +37,19 @@ Transport::start()
 inline void 
 Transport::stop()
 {
-    mState = DEVICE_STOPPED;
+    setStopped();
 }
 
 inline bool 
-Transport::isReadable() const 
+Transport::isFunctional() const 
 {
-    return mState == DEVICE_READABLE;
+    return mState == DEVICE_FUNCTIONAL;
 }
 
 inline void 
-Transport::setReadable()
+Transport::setFunctional()
 {
-    mState = DEVICE_READABLE;
+    mState = DEVICE_FUNCTIONAL;
 }
 
 inline bool 
@@ -131,7 +131,7 @@ Transport::readObjectType()
                 continue;
             }
             // we are good to go!
-            setReadable();
+            setFunctional();
             break;
         }
         read(s);
@@ -353,7 +353,7 @@ inline void
 Transport::write(const void* ptr, uint32_t size)
 {
     uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; i < size; ++i) {
+    for(uint32_t i = 0; (i < size) || isError(); ++i) {
         if(!mDevice->write(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
@@ -366,7 +366,7 @@ inline void
 Transport::read(void* ptr, uint32_t size) 
 {
     uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; i < size; ++i) {
+    for(uint32_t i = 0; (i < size) || isError(); ++i) {
         if(!mDevice->read(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
@@ -456,6 +456,17 @@ Transport::fixEndianness<ENDIAN_SWAP, 8>(void* ptr)
         ((v>>24) & 0x0000000000FF0000) |
         ((v>>40) & 0x000000000000FF00) |
         (v<<56);
+}
+
+inline void
+Transport::swap(Transport& transport) 
+{
+    stop();
+    std::swap(mDevice, transport.mDevice);
+    std::swap(mState, transport.mState);
+    std::swap(mTypeRegistry, transport.mTypeRegistry);
+    std::swap(mWriteChecksum, transport.mWriteChecksum);
+    std::swap(mReadChecksum, transport.mReadChecksum);
 }
 
 template <typename C>
