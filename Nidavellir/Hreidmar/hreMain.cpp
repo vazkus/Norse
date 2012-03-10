@@ -39,17 +39,6 @@ public:
     }
 };
 
-class ChLogger
-{
-public:
-    void setTypeRegistry(ygg::TypeRegistry*){}
-    void start(){}
-    void stop(){}
-    void writeData(const ygg::TypeBase*){}
-    void readData(ygg::TypeBase*&){}
-
-};
-
 int main(void) 
 {
     // initializie ChibiOS
@@ -80,7 +69,7 @@ int main(void)
         return 1;
     }
     // setup the transport
-    sm::Transport transport(device);
+    sm::Transport transport(&device);
     sm::Logger logger;
     // start the service
     sm::startService(transport, logger, handler);

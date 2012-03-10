@@ -92,7 +92,7 @@ CSRC = $(PORTSRC) \
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC = $(CHIBIOS)/os/various/ch.cpp \
-         hreMain.cpp 
+         hreMain.cpp broLISAccelerometer.cpp
 #cppsysstubs.cpp
 
 # C sources to be compiled in ARM mode regardless of the global setting.

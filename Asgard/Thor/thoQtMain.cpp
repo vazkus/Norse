@@ -31,7 +31,7 @@ int main( int argc, char ** argv )
         return 1;
     }
     // setup the transport
-    sm::Transport transport(device);
+    sm::Transport transport(&device);
 
     // now initialize the log device... 
     sm::DeviceParams lparams= { "logfile.out" };
@@ -40,7 +40,7 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    sm::Logger logger(ldevice);
+    sm::Logger logger(&ldevice);
 
     // start the service
     sm::startService(transport, logger, handler);

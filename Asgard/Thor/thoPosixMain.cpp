@@ -1,4 +1,5 @@
 #include "yggManager.hpp"
+#include "yggReplayManager.hpp"
 #include "yggPosixTraits.hpp"
 #include "ratSerializableTypes.hpp"
 #include <iostream>
@@ -20,15 +21,8 @@ struct ThorPosixConfig
 };
 class PCInputHandler;
 
-class DummyLogger
+class PCTerminator
 {
-public:
-    void setTypeRegistry(ygg::TypeRegistry*){}
-    void start(){}
-    void stop(){}
-    void writeData(const ygg::TypeBase*){}
-    void readData(ygg::TypeBase*&){}
-
 };
 
 typedef ygg::Manager<
@@ -37,6 +31,12 @@ typedef ygg::Manager<
                      ygg::ConfiguredTransport<ThorPosixConfig>, 
                      ThorPosixConfig
                     > sm;
+typedef ygg::ReplayManager<
+                     ygg::PosixSystemTraits, 
+                     PCInputHandler, 
+                     PCTerminator,
+                     ThorPosixConfig
+                    > rm;
 
 class PCInputHandler
 {
@@ -88,7 +88,7 @@ int main()
         return 1;
     }
     // setup the transport
-    sm::Transport transport(device);
+    sm::Transport transport(&device);
 
 
     // now initialize the log device... 
@@ -98,7 +98,7 @@ int main()
         return 1;
     }
 
-    sm::Logger logger(ldevice);
+    sm::Logger logger(&ldevice);
 
     // start the service
     sm::startService(transport, logger, handler);
@@ -111,4 +111,9 @@ int main()
         sleep(1);
     }
     return 0;
+
+
+
+    PCTerminator terminator;
+    rm::startReplay(transport, handler, terminator);
 }
