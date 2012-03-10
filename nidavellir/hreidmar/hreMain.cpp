@@ -70,9 +70,8 @@ int main(void)
     }
     // setup the transport
     sm::Transport transport(&device);
-    sm::Logger logger;
     // start the service
-    sm::startService(transport, logger, handler);
+    sm::startService(transport, handler);
     
 
     // Note that the serialization service is configured as NONBLOCKING

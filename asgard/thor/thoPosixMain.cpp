@@ -101,7 +101,8 @@ int main()
     sm::Logger logger(&ldevice);
 
     // start the service
-    sm::startService(transport, logger, handler);
+    sm::startService(transport, handler);
+    sm::startLogger(logger);
 
     // add a thread that sends ping once in a while (set to ~5hz)
     sm::Thread pinger("Pinger", 0, 0, pingerFunc, NULL, NULL);

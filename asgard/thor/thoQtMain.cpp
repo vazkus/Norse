@@ -43,7 +43,8 @@ int main( int argc, char ** argv )
     sm::Logger logger(&ldevice);
 
     // start the service
-    sm::startService(transport, logger, handler);
+    sm::startService(transport, handler);
+    //sm::startLogger(logger);
 
     return a.exec();
 }
