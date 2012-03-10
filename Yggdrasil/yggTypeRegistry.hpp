@@ -7,14 +7,12 @@
 #include <list>
 #include <vector>
 #include <cassert>
-//#include <iostream>
 
 namespace ygg
 {
 
 class TypeRegistry 
 {
-    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
 private:
     class ManifestData : public Serializable<ManifestData>
     {
@@ -53,7 +51,8 @@ private:
         private:
             Type mType;
     };
-    friend Transport& operator<<(Transport& transport, ManifestData& md);
+
+public:
     // keeps the pair of descriptor and it's enabled/disabled status
     struct DescriptorState 
     {
@@ -63,14 +62,15 @@ private:
     };
     typedef std::vector<DescriptorState>        TypeDescriptorArray;
     typedef typename TypeDescriptorArray::const_iterator TypeDescriptorConstIt;
+
+private:
     typedef TypeDescriptorBase::UnitType        UnitType;
     typedef TypeDescriptorBase::VersionType     VersionType;
     typedef std::vector<UnitType>               TypeIdMap;
-    
-    TypeRegistry();
-    ~TypeRegistry();
 
 public:
+    TypeRegistry();
+    ~TypeRegistry();
     // public API
     template<class Type> bool addType(const std::string& name, const int version);
     TypeBase* instantiateForeignType(UnitType fType) const;
@@ -136,7 +136,6 @@ TypeRegistry::ManifestData::read(Transport& transport)
 {
     uint32_t dSize;
     transport.readChecksumed(dSize);
-    //std::cout<<"dsize: "<<dSize<<" readable: "<<transport.isReadable()<<std::endl;
     if(transport.isReadable()) {
         for(uint32_t i = 0; i < dSize; ++i) {
             mDescriptorRecords.push_back(DescriptorRecord());
@@ -144,7 +143,6 @@ TypeRegistry::ManifestData::read(Transport& transport)
             transport.read(drecord.mId);
             transport.read(drecord.mVersion);
             transport.read(drecord.mName);
-            //std::cout<<"record: "<<(int)drecord.mId<<" "<<(int)drecord.mVersion<<" "<<drecord.mName<<std::endl;
         }
     }
 }
@@ -313,7 +311,6 @@ TypeRegistry::applyManifest(ManifestData* md)
         }
     }
     if(!md->mDescriptorRecords.empty()) {
-        //std::cout<<"Manifest accepted"<<std::endl;
         setManifestReceived(true);
     }
 }

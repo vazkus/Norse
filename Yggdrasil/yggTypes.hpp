@@ -11,6 +11,7 @@ namespace ygg
 class TypeRegistry;
 class TypeBase;
 class Transport;
+class DummyType {};
 
 
 class TypeBase

@@ -10,7 +10,7 @@ namespace ygg
 {
 
 inline
-Transport::Transport(DeviceBase& device)
+Transport::Transport(DeviceBase* device)
  : mDevice(device),
    mState(DEVICE_STOPPED),
    mTypeRegistry(NULL),
@@ -27,7 +27,7 @@ Transport::setTypeRegistry(TypeRegistry* registry)
 inline void 
 Transport::start()
 {
-    if(mDevice.isOpen()) {
+    if(mDevice->isOpen()) {
         mState = DEVICE_WAITING_SYNC;
     } else {
         mState = DEVICE_ERROR;
@@ -354,7 +354,7 @@ Transport::write(const void* ptr, uint32_t size)
 {
     uint8_t* bptr = (uint8_t*)ptr;
     for(uint32_t i = 0; i < size; ++i) {
-        if(!mDevice.write(bptr+i, 1)) {
+        if(!mDevice->write(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
         }
@@ -367,7 +367,7 @@ Transport::read(void* ptr, uint32_t size)
 {
     uint8_t* bptr = (uint8_t*)ptr;
     for(uint32_t i = 0; i < size; ++i) {
-        if(!mDevice.read(bptr+i, 1)) {
+        if(!mDevice->read(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
         }
@@ -480,7 +480,7 @@ ConfiguredTransport<C>::fixEndianness64(void* ptr)
 }
 
 template <typename C>
-ConfiguredTransport<C>::ConfiguredTransport(DeviceBase& device)
+ConfiguredTransport<C>::ConfiguredTransport(DeviceBase* device)
  : Transport(device)
 {
 }

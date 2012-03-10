@@ -13,10 +13,12 @@ template<typename T, typename C>
 class Serializer
 {
     typedef typename T::MutexType   MutexType;
-private:
-    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
+public:
     Serializer(Transport& transport);
     bool isFunctional();
+    void send(TypeBase* d);
+    void reset();
+    void stop();
 private:
     template<typename TH, ConfigCommunication>
     class Helper 
@@ -26,15 +28,30 @@ private:
         void send(TypeBase* d);
         void reset();
     };
-public:
-    void send(TypeBase* d);
-    void reset();
-    void stop();
 private:
     Transport&  mTransport;
     Helper<T,C::Serialization> mHelper;
 };
 
+template<>
+class Serializer<DummyType, DummyType>
+{
+public:
+    Serializer(Transport&)
+    {}
+    bool isFunctional()
+    {
+        return true;
+    }
+    void send(TypeBase*)
+    {}
+    void reset()
+    {}
+    void stop()
+    {}
+};
+
+typedef Serializer<DummyType, DummyType> DummySerializer;
 
 
 /////////////////////////////////////////////////////////

@@ -11,11 +11,6 @@ class DeviceBase;
 
 class Transport 
 {
-    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
-    template <typename ST, typename SC> friend class Serializer;
-    template <typename DT, typename DS, typename DI, typename DL, typename DC> friend class Deserializer;
-    friend class TypeRegistry;
-
 protected:
     typedef TypeBase::UnitType  UnitType;
     typedef uint32_t            SyncType;
@@ -61,9 +56,9 @@ public:
     template <class T> void readChecksumed(T& td);
     template <class T> void writeChecksumed(const T& td);
 
-protected:
+public:
     // API indented for friends and derived classes
-    Transport(DeviceBase& device);
+    Transport(DeviceBase* device);
     void setTypeRegistry(TypeRegistry* registry);
     void start();
     void stop();
@@ -81,12 +76,11 @@ protected:
     void writeData(const TypeBase* d);
     // reading serializable objects
     void readData(TypeBase*& d);
-    UnitType  readObjectType();
-    TypeBase* buildObject(UnitType fType);
-
-    template <ConfigEndianness E, int L> void fixEndianness(void* ptr);
 
 protected:
+    UnitType  readObjectType();
+    TypeBase* buildObject(UnitType fType);
+    template <ConfigEndianness E, int L> void fixEndianness(void* ptr);
     void write(const void* ptr, uint32_t size);
     void read(void* ptr, uint32_t size);
 
@@ -96,7 +90,7 @@ protected:
     virtual void fixEndianness64(void* ptr) = 0;
 
 protected:
-    DeviceBase&   mDevice;
+    DeviceBase*   mDevice;
     DeviceState   mState;
     TypeRegistry* mTypeRegistry;
     ChecksumType  mReadChecksum;
@@ -109,13 +103,54 @@ template <typename C>
 class ConfiguredTransport : public Transport
 {
 public:
-    ConfiguredTransport(DeviceBase& device);
+    ConfiguredTransport(DeviceBase* device);
 protected:
     virtual void fixEndianness16(void* ptr);
     virtual void fixEndianness32(void* ptr);
     virtual void fixEndianness64(void* ptr);
 };
 
+
+class DummyTransport
+{
+public:
+    DummyTransport(DeviceBase* = NULL)
+    {}
+    void setTypeRegistry(TypeRegistry*)
+    {}
+    void start()
+    {}
+    void stop()
+    {}
+    bool isReadable() const
+    { 
+        return false; 
+    }
+    void setReadable()
+    {}
+    bool isError() const
+    { 
+        return false;
+    }
+    void setError()
+    {}
+    bool isStopped() const
+    { 
+        return true; 
+    }
+    void setStopped()
+    {}
+    bool isWaitSync() const
+    { 
+        return false; 
+    }
+    void setWaitSync()
+    {}
+    void writeData(const TypeBase*)
+    {}
+    void readData(TypeBase*&)
+    {}
+};
 
 } // namespace ygg
 

@@ -13,8 +13,7 @@ template<typename T, typename S, typename I, typename L, typename C>
 class Deserializer
 {
     typedef typename T::MutexType   MutexType;
-private:
-    template <typename MT, typename MI, typename ML, typename MC> friend class Manager;
+public:
     Deserializer(Transport& transport, 
                  TypeRegistry& registry, 
                  L& logger,
@@ -22,6 +21,7 @@ private:
                  I& handler);
     bool isFunctional();
     void stop();
+    void sendManifestRequest();
 private:
     template<typename TH, ConfigCommunication>
     class Helper 
@@ -59,11 +59,20 @@ Deserializer<T,S,I,L,C>::isFunctional()
 {
     return !mTransport.isError() && !mTransport.isStopped();
 }
+
 template <typename T, typename S, typename I, typename L, typename C>
 void
 Deserializer<T,S,I,L,C>::stop()
 {
     mTransport.stop();
+}
+
+template <typename T, typename S, typename I, typename L, typename C>
+void
+Deserializer<T,S,I,L,C>::sendManifestRequest()
+{
+    mSerializer.reset();
+    mSerializer.send(mTypeRegistry.extractManifest());
 }
 
 /////////////////////////////////////////////////////////
@@ -108,8 +117,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer
         if(d->id() == TypeDescriptor<SysCmdDataType>::id()) {
             SysCmdDataType* sd = (SysCmdDataType*)d;
             if(*sd == SysCmdDataType::CMD_MANIFEST_REQUEST) {
-                mOwner.mSerializer.reset();
-                mOwner.mSerializer.send(mOwner.mTypeRegistry.extractManifest());
+                mOwner.sendManifestRequest();
             }
         } else
         if(mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {
@@ -215,8 +223,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(
         if(d->id() == TypeDescriptor<SysCmdDataType>::id()) {
             SysCmdDataType* sd = (SysCmdDataType*)d;
             if(*sd == SysCmdDataType::CMD_MANIFEST_REQUEST) {
-                h->mOwner.mSerializer.reset();
-                h->mOwner.mSerializer.send(h->mOwner.mTypeRegistry.extractManifest());
+                h->mOwner.sendManifestRequest();
             }
         } else
         if(h->mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {

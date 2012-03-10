@@ -37,7 +37,7 @@ public:
     static void send(TypeBase* d);
     // API for type registration and checking
     template<typename T> static bool registerType(const std::string& name, 
-                                               const int version);
+                                                  const int version);
     template<typename T> static bool isType(TypeBase* d);
 
 private:
@@ -49,13 +49,12 @@ private:
 /////////////////////////////////////////////////////////
 // static data member initialization area...           //
 /////////////////////////////////////////////////////////
-template<typename T, typename I, typename L, typename C> 
-TypeRegistry Manager<T,I,L,C>::sTypeRegistry;
-template<typename T, typename I, typename L, typename C> 
-Serializer<T,C>* Manager<T,I,L,C>::sSerializer = NULL;
-template<typename T, typename I, typename L, typename C> 
-Deserializer<T,typename Manager<T,I,L,C>::Serializer,I,L,C>* Manager<T,I,L,C>::sDeserializer = NULL;
-
+template<typename S, typename I, typename L, typename C> 
+TypeRegistry Manager<S,I,L,C>::sTypeRegistry;
+template<typename S, typename I, typename L, typename C> 
+Serializer<S,C>* Manager<S,I,L,C>::sSerializer = NULL;
+template<typename S, typename I, typename L, typename C> 
+Deserializer<S,typename Manager<S,I,L,C>::Serializer,I,L,C>* Manager<S,I,L,C>::sDeserializer = NULL;
 
 
 /////////////////////////////////////////////////////////
@@ -105,8 +104,8 @@ Manager<S,I,L,C>::stopService()
         sDeserializer = NULL;
         delete temp;
     }
+    sTypeRegistry.reset();
 }
-
 
 // API for sending receiving serializable objects.
 template <typename S, typename I, typename L, typename C>
@@ -130,11 +129,11 @@ Manager<S,I,L,C>::registerType(const std::string& name, const int version)
 }
 
 template <typename S, typename I, typename L, typename C>
-template<typename T>
+template<typename Type>
 bool 
 Manager<S,I,L,C>::isType(TypeBase* d)
 {
-    return d->id() == TypeDescriptor<T>::id();
+    return d->id() == TypeDescriptor<Type>::id();
 }
 
 /////////////////////////////////////////////////////////
