@@ -9,9 +9,9 @@
 # Include directories                  #
 ########################################
 NORSE_INCDIR = $(NORSE_ROOT)/BUILD/chibios/include
-YGGDRASIL    = $(NORSE_ROOT)/Yggdrasil
-RATATOSK     = $(NORSE_ROOT)/Ratatosk
-HREIDMAR     = $(NORSE_ROOT)/Nidavellir/Hreidmar
+YGGDRASIL    = $(NORSE_ROOT)/yggdrasil
+RATATOSK     = $(NORSE_ROOT)/ratatosk
+HREIDMAR     = $(NORSE_ROOT)/nidavellir/hreidmar
 
 ########################################
 # Library directories                  #

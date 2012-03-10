@@ -43,6 +43,7 @@ public:
 template <class Type>
 class TypeDescriptor : public TypeDescriptorBase
 {
+private:
     friend class TypeRegistry;
     TypeDescriptor(UnitType id, VersionType version, const std::string& name) 
       : mVersion(version),
@@ -67,15 +68,14 @@ public:
     { 
         return new Type(); 
     }
-private:
-    VersionType mVersion;
-    std::string mName;
 public:
     static UnitType id()
     {
         return sId;
     }
 private:
+    VersionType mVersion;
+    std::string mName;
     static UnitType sId;
 };
 

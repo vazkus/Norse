@@ -8,7 +8,7 @@ preinstall:
 	cp $(HREIDMAR)/mcuconf.h $(NORSE_INCDIR)
 	cp $(HREIDMAR)/halconf.h $(NORSE_INCDIR)
 
-SUBDIRS = Hreidmar
+SUBDIRS = hreidmar
 
 .PHONY: subdirs $(SUBDIRS)
 

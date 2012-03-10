@@ -27,33 +27,39 @@ public:
     typedef ygg::DummySerializer   Serializer;
     typedef typename S::DeviceParamsType DeviceParams;
     typedef ygg::Deserializer<S,Serializer,I,Logger,C> Deserializer;
+
 public:
     // API used for the service initialization/start/stop.
     static void startReplay(Transport& transport, I& handler, T& terminator);
     static void stopReplay();
     static void pauseReplay();
     static void continueReplay();
+
 private:
+    ReplayManager();
+    static ReplayManager<S,I,T,C>& self();
     // API for type registration and checking
     template<typename Type> static bool registerType(const std::string& name, 
                                                      const int version);
     template<typename Type> static bool isType(TypeBase* d);
 
 private:
-    static TypeRegistry  sTypeRegistry;
-    static Serializer*   sSerializer;
-    static Deserializer* sDeserializer;
+    TypeRegistry  mTypeRegistry;
+    Deserializer* mDeserializer;
 };
 
-/////////////////////////////////////////////////////////
-// static data member initialization area...           //
-/////////////////////////////////////////////////////////
-template<typename S, typename I, typename T, typename C> 
-TypeRegistry ReplayManager<S,I,T,C>::sTypeRegistry;
+template <typename S, typename I, typename T, typename C>
+ReplayManager<S,I,T,C>::ReplayManager()
+{
+}
 
-template<typename S, typename I, typename T, typename C> 
-Deserializer<S,typename ReplayManager<S,I,T,C>::Serializer,I,typename ReplayManager<S,I,T,C>::Logger,C>* ReplayManager<S,I,T,C>::sDeserializer = NULL;
-
+template <typename S, typename I, typename T, typename C>
+ReplayManager<S,I,T,C>& 
+ReplayManager<S,I,T,C>::self()
+{
+    static ReplayManager<S,I,T,C> sRManager;
+    return sRManager;
+}
 
 /////////////////////////////////////////////////////////
 // function definition area...                         //
@@ -67,14 +73,15 @@ ReplayManager<S,I,T,C>::startReplay(Transport& transport, I& handler, T& termina
     if(transport.isError()) {
         return;
     }
-    transport.setTypeRegistry(&sTypeRegistry);
+    transport.setTypeRegistry(&self().mTypeRegistry);
     
     // create static instances
     static Serializer sSerializer(transport);
     static Logger     sLogger;
     
     // construct the deserializer
-    sDeserializer = new Deserializer(transport, sTypeRegistry, sLogger, sSerializer, handler);
+    self().mDeserializer = new Deserializer(transport, self().mTypeRegistry, 
+                                            sLogger, sSerializer, handler);
 }
 
 
@@ -105,7 +112,7 @@ template<typename Type>
 bool 
 ReplayManager<S,I,T,C>::registerType(const std::string& name, const int version)
 {
-    return sTypeRegistry.addType<Type>(name, version);
+    return self().mTypeRegistry.template addType<Type>(name, version);
 }
 
 template <typename S, typename I, typename T, typename C>

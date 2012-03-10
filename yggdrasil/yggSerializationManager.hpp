@@ -27,8 +27,7 @@ public:
     typedef ygg::Serializer<S,C>   Serializer;
     typedef typename S::DeviceParamsType   DeviceParams;
     typedef ygg::Deserializer<S,Serializer,I,L,C> Deserializer;
-private:
-    template <typename TM, ConfigManifest> class ManifestRequester;
+
 public:
     // API used for the service initialization/start/stop.
     static void startService(Transport& transport, L& logger, I& handler);
@@ -41,21 +40,27 @@ public:
     template<typename T> static bool isType(TypeBase* d);
 
 private:
-    static TypeRegistry  sTypeRegistry;
-    static Serializer*   sSerializer;
-    static Deserializer* sDeserializer;
+    template <typename TM, ConfigManifest> class ManifestRequester;
+    SerializationManager();
+    static SerializationManager& self();
+private:
+    TypeRegistry  mTypeRegistry;
+    Serializer*   mSerializer;
+    Deserializer* mDeserializer;
 };
 
-/////////////////////////////////////////////////////////
-// static data member initialization area...           //
-/////////////////////////////////////////////////////////
-template<typename S, typename I, typename L, typename C> 
-TypeRegistry SerializationManager<S,I,L,C>::sTypeRegistry;
-template<typename S, typename I, typename L, typename C> 
-Serializer<S,C>* SerializationManager<S,I,L,C>::sSerializer = NULL;
-template<typename S, typename I, typename L, typename C> 
-Deserializer<S,typename SerializationManager<S,I,L,C>::Serializer,I,L,C>* SerializationManager<S,I,L,C>::sDeserializer = NULL;
+template <typename S, typename I, typename L, typename C>
+SerializationManager<S,I,L,C>::SerializationManager()
+{
+}
 
+template <typename S, typename I, typename L, typename C>
+SerializationManager<S,I,L,C>& 
+SerializationManager<S,I,L,C>::self()
+{
+    static SerializationManager<S,I,L,C> sManager;
+    return sManager;
+}
 
 /////////////////////////////////////////////////////////
 // function definition area...                         //
@@ -66,7 +71,7 @@ SerializationManager<S,I,L,C>::startService(Transport& transport, L& logger, I& 
 {
     // TBD: design is not very good, too many data types are 
     // interconnected.. Review this.
-    sTypeRegistry.initialize();
+    self().mTypeRegistry.initialize();
     ManifestRequester<S,C::ManifestRequired>::start();
 
     // start the transport
@@ -75,16 +80,16 @@ SerializationManager<S,I,L,C>::startService(Transport& transport, L& logger, I& 
     if(transport.isError()) {
         return;
     }
-    transport.setTypeRegistry(&sTypeRegistry);
-    logger.setTypeRegistry(&sTypeRegistry);
+    transport.setTypeRegistry(&self().mTypeRegistry);
+    logger.setTypeRegistry(&self().mTypeRegistry);
     // construct the serializer 
-    if(sSerializer == NULL) {
-        sSerializer = new Serializer(transport);
+    if(self().mSerializer == NULL) {
+        self().mSerializer = new Serializer(transport);
     }
     // construct the deserializer
-    if(sDeserializer == NULL) {
-        sDeserializer = new Deserializer(transport, sTypeRegistry, 
-                                         logger, *sSerializer, handler);
+    if(self().mDeserializer == NULL) {
+        self().mDeserializer = new Deserializer(transport, self().mTypeRegistry, 
+                                                logger, *self().mSerializer, handler);
     }
 }
 
@@ -92,19 +97,19 @@ template <typename S, typename I, typename L, typename C>
 void 
 SerializationManager<S,I,L,C>::stopService() 
 {
-    if(sSerializer) {
-        sSerializer->stop();
-        Serializer* temp = sSerializer;
-        sSerializer = NULL;
+    if(self().mSerializer) {
+        self().mSerializer->stop();
+        Serializer* temp = self().mSerializer;
+        self().mSerializer = NULL;
         delete temp;
     }
-    if(sDeserializer) {
-        sDeserializer->stop();
-        Deserializer* temp = sDeserializer;
-        sDeserializer = NULL;
+    if(self().mDeserializer) {
+        self().mDeserializer->stop();
+        Deserializer* temp = self().mDeserializer;
+        self().mDeserializer = NULL;
         delete temp;
     }
-    sTypeRegistry.reset();
+    self().mTypeRegistry.reset();
 }
 
 // API for sending receiving serializable objects.
@@ -112,10 +117,10 @@ template <typename S, typename I, typename L, typename C>
 void 
 SerializationManager<S,I,L,C>::send(TypeBase* d)
 {
-    if(sSerializer && sSerializer->isFunctional() &&
-       sTypeRegistry.isOwnTypeEnabled(d->id())) {
+    if(self().mSerializer && self().mSerializer->isFunctional() &&
+       self().mTypeRegistry.isOwnTypeEnabled(d->id())) {
         // should be a way to do this through a compile time assert.
-        sSerializer->send(d);
+        self().mSerializer->send(d);
     }
 }
 
@@ -125,7 +130,7 @@ template<typename Type>
 bool 
 SerializationManager<S,I,L,C>::registerType(const std::string& name, const int version)
 {
-    return sTypeRegistry.addType<Type>(name, version);
+    return self().mTypeRegistry.template addType<Type>(name, version);
 }
 
 template <typename S, typename I, typename L, typename C>
@@ -154,7 +159,7 @@ public:
 private:
     static bool requestFunc(void*)
     {
-        if(SerializationManager<S,I,L,C>::sTypeRegistry.isManifestReceved()) {
+        if(SerializationManager<S,I,L,C>::self().mTypeRegistry.isManifestReceved()) {
             return true;
         }
         SerializationManager<S,I,L,C>::send(new SystemCmdData(SystemCmdData::CMD_MANIFEST_REQUEST));
@@ -171,17 +176,17 @@ template <typename S, typename I, typename L, typename C>
 template <typename TH>
 class SerializationManager<S,I,L,C>::ManifestRequester<TH,MANIFEST_IGNORE>
 {
-    typedef SerializationManager<S,I,L,C> M;
+    typedef SerializationManager<S,I,L,C> SM;
 public:
     static void start() 
     {
-        TypeRegistry::TypeDescriptorConstIt dit = M::sTypeRegistry::descriptorBegin();
-        TypeRegistry::TypeDescriptorConstIt edit = M::sTypeRegistry::descriptorEnd();
+        TypeRegistry::TypeDescriptorConstIt dit = SM::self().mTypeRegistry.descriptorBegin();
+        TypeRegistry::TypeDescriptorConstIt edit = SM::self().mTypeRegistry.descriptorEnd();
         for(;  dit != edit; ++dit) {
-            typename M::UnitType tId = dit->descriptor->typeId();
-            M::sTypeRegistry::acceptType(tId, tId);
+            typename SM::UnitType tId = dit->descriptor->typeId();
+            SM::self().mTypeRegistry.acceptType(tId, tId);
         }
-        M::sTypeRegistry::setManifestReceived(true);
+        SM::self().mTypeRegistry.setManifestReceived(true);
     }
 };
 } // namespace ygg
