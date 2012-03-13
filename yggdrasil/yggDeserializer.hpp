@@ -15,7 +15,6 @@ class Deserializer
     typedef typename T::MutexType   MutexType;
 public:
     Deserializer(Transport& transport, 
-                 TypeRegistry& registry, 
                  S& serializer,
                  I& handler);
     bool isFunctional();
@@ -33,7 +32,6 @@ private:
     };
 private:
     Transport&    mTransport;
-    TypeRegistry& mTypeRegistry;
     L   mLogger;  
     S&  mSerializer;
     I&  mHandler;
@@ -46,11 +44,9 @@ private:
 /////////////////////////////////////////////////////////
 template <typename T, typename S, typename I, typename L, typename C>
 Deserializer<T,S,I,L,C>::Deserializer(Transport& transport, 
-                                      TypeRegistry& registry, 
                                       S& serializer,
                                       I& handler)
  : mTransport(transport),
-   mTypeRegistry(registry),
    mSerializer(serializer),
    mHandler(handler),
    mHelper(*this)
@@ -76,7 +72,7 @@ void
 Deserializer<T,S,I,L,C>::sendManifestRequest()
 {
     mSerializer.reset();
-    mSerializer.send(mTypeRegistry.extractManifest());
+    mSerializer.send(TypeRegistry::extractManifest());
 }
 
 template <typename T, typename S, typename I, typename L, typename C>
@@ -126,12 +122,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer
         }
         if(d->id() == TypeDescriptor<ManifestDataType>::id()) {
             ManifestDataType* md = (ManifestDataType*)d;
-            mOwner.mTypeRegistry.applyManifest(md);
-            // several manifests may be received at during the handshake,
-            // log the first only, the others are redundant...
-            if(mOwner.mTypeRegistry.isManifestReceved()) {
-                mOwner.mLogger.writeData(md);
-            }
+            TypeRegistry::applyManifest(md);
         } else
         if(d->id() == TypeDescriptor<SysCmdDataType>::id()) {
             SysCmdDataType* sd = (SysCmdDataType*)d;
@@ -139,7 +130,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer
                 mOwner.sendManifestRequest();
             }
         } else
-        if(mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {
+        if(TypeRegistry::isOwnTypeEnabled(d->id())) {
             mOwner.mHandler.process(d);
             // write the object to the log...
             mOwner.mLogger.writeData(d);
@@ -212,7 +203,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::deserializerFunc
     TypeBase* d = NULL;
     h->mOwner.mTransport.readData(d);
     if(d != NULL) {
-        assert(h->mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())); 
+        assert(TypeRegistry::isOwnTypeEnabled(d->id())); 
         h->mInputQueue.push(d);
     }    
     return false;
@@ -232,12 +223,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(
         TypeBase* d = *it;
         if(d->id() == TypeDescriptor<ManifestDataType>::id()) {
             ManifestDataType* md = (ManifestDataType*)d;
-            h->mOwner.mTypeRegistry.applyManifest(md);
-            // several manifests may be received at during the handshake,
-            // log the first only, the others are redundant...
-            if(h->mOwner.mTypeRegistry.isManifestReceved()) {
-                h->mOwner.mLogger.writeData(md);
-            }
+            TypeRegistry::applyManifest(md);
         } else
         if(d->id() == TypeDescriptor<SysCmdDataType>::id()) {
             SysCmdDataType* sd = (SysCmdDataType*)d;
@@ -245,7 +231,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(
                 h->mOwner.sendManifestRequest();
             }
         } else
-        if(h->mOwner.mTypeRegistry.isOwnTypeEnabled(d->id())) {
+        if(TypeRegistry::isOwnTypeEnabled(d->id())) {
             h->mOwner.mHandler.process(d);
             // write the object to the log...
             h->mOwner.mLogger.writeData(d);

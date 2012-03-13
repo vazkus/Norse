@@ -69,32 +69,39 @@ private:
     typedef std::vector<UnitType>               TypeIdMap;
 
 public:
-    TypeRegistry();
-    ~TypeRegistry();
     // public API
-    template<class Type> bool addType(const std::string& name, const int version);
-    TypeBase* instantiateForeignType(UnitType fType) const;
-    TypeBase* instantiateOwnType(UnitType oType) const;
-    bool      isOwnTypeEnabled(UnitType oType) const;
-    bool      isForeignTypeEnabled(UnitType oType) const;
-    void      initialize();
-    TypeBase* extractManifest();
-    UnitType  findTypeId(const std::string& name, const VersionType version);
-    void      applyManifest(ManifestData* md);
-    void      acceptType(UnitType oType, UnitType fType);
-    bool      isManifestReceved() const;
-    void      setManifestReceived(bool flag);
+    template<typename Type> static bool addType(const std::string& name, 
+                                                const int version);
+    template<typename Type> static bool isType(TypeBase* d);
+    static TypeBase* instantiateForeignType(UnitType fType);
+    static TypeBase* instantiateOwnType(UnitType oType);
+    static bool      isOwnTypeEnabled(UnitType oType);
+    static bool      isForeignTypeEnabled(UnitType oType);
+    static void      initialize();
+    static TypeBase* extractManifest();
+    static UnitType  findTypeId(const std::string& name, const VersionType version);
+    static void      applyManifest(ManifestData* md);
+    static void      acceptType(UnitType oType, UnitType fType);
+    static bool      isManifestReceved();
+    static void      setManifestReceived(bool flag);
 
-    TypeDescriptorConstIt descriptorBegin() const;
-    TypeDescriptorConstIt descriptorEnd() const;
+    static TypeDescriptorConstIt descriptorBegin();
+    static TypeDescriptorConstIt descriptorEnd();
 
 private:
-    UnitType  foreignTypeToOwnType(const UnitType fType) const;
-    void      setTypeState(uint32_t typeId, bool enable);
-    const     DescriptorState& descriptorStateAt(uint32_t typeId) const;
-    DescriptorState& descriptorStateAt(uint32_t typeId);
-    bool      isValidType(uint32_t typeId) const;
-    void      reset();
+    static UnitType  foreignTypeToOwnType(const UnitType fType);
+    static void      setTypeState(uint32_t typeId, bool enable);
+    static DescriptorState& descriptorStateAt(uint32_t typeId);
+    static bool      isValidType(uint32_t typeId);
+    static void      reset();
+
+private:
+    TypeRegistry();
+    static TypeRegistry& self()
+    {
+        static TypeRegistry sTypeRegistry;
+        return sTypeRegistry;
+    }
 
 private:
     TypeIdMap           mTypeMap;
@@ -102,6 +109,14 @@ private:
     bool                mManifestReceived;
     const UnitType      INVALID_TYPE_ID;
 };
+
+
+inline
+TypeRegistry::TypeRegistry() 
+ :  mManifestReceived(false),
+    INVALID_TYPE_ID(std::numeric_limits<UnitType>::max())
+{}
+
 
 inline
 TypeRegistry::ManifestData::ManifestData()
@@ -119,7 +134,7 @@ TypeRegistry::ManifestData::addRecord(TypeDescriptorBase* desc)
 }
 
 inline void 
-TypeRegistry::ManifestData::write(Transport& transport) const 
+TypeRegistry::ManifestData::write(Transport& transport) const
 {
     transport.writeChecksumed((uint32_t)mDescriptorRecords.size());
     DescriptorListConstIt dit = mDescriptorRecords.begin();
@@ -189,48 +204,44 @@ TypeRegistry::DescriptorState::DescriptorState(TypeDescriptorBase* desc, bool en
     : descriptor(desc), enabled(en)
 {}
 
-inline
-TypeRegistry::TypeRegistry() 
- :  mManifestReceived(false),
-    INVALID_TYPE_ID(std::numeric_limits<UnitType>::max())
-{}
-
-inline
-TypeRegistry::~TypeRegistry()
-{
-    reset();
-}
 
 template<class Type>
-inline bool 
+bool 
 TypeRegistry::addType(const std::string& name, const int version)
 {
-    if(mDescriptors.size() == INVALID_TYPE_ID) {
+    if(self().mDescriptors.size() == self().INVALID_TYPE_ID) {
         return false;
     }
     // if the manifest and command data types are not registered 
     // yet reserve enough space for them and go ahead
-    if(mDescriptors.size() < 2) {
-        mDescriptors.resize(2);
+    if(self().mDescriptors.size() < 2) {
+        self().mDescriptors.resize(2);
     }
     TypeDescriptorBase* tDesc = 
-        new TypeDescriptor<Type>(mDescriptors.size(), version, name);
-    mDescriptors.push_back(DescriptorState(tDesc, false));
+        new TypeDescriptor<Type>(self().mDescriptors.size(), version, name);
+    self().mDescriptors.push_back(DescriptorState(tDesc, false));
     return true;
 }
 
+template<typename Type>
+bool 
+TypeRegistry::isType(TypeBase* d)
+{
+    return d->id() == TypeDescriptor<Type>::id();
+}
+
 inline TypeBase*  
-TypeRegistry::instantiateForeignType(UnitType fType) const
+TypeRegistry::instantiateForeignType(UnitType fType)
 {
     UnitType oType = foreignTypeToOwnType(fType);
-    if(oType != INVALID_TYPE_ID) {
+    if(oType != self().INVALID_TYPE_ID) {
         return instantiateOwnType(oType);
     }
     return NULL;
 }
 
 inline TypeBase* 
-TypeRegistry::instantiateOwnType(UnitType oType) const
+TypeRegistry::instantiateOwnType(UnitType oType) 
 {
     if(isValidType(oType) && isOwnTypeEnabled(oType)) {
         const DescriptorState& state = descriptorStateAt(oType);
@@ -240,14 +251,14 @@ TypeRegistry::instantiateOwnType(UnitType oType) const
 }
 
 inline bool  
-TypeRegistry::isForeignTypeEnabled(UnitType fType) const
+TypeRegistry::isForeignTypeEnabled(UnitType fType) 
 {
     UnitType oType = foreignTypeToOwnType(fType);
     return isOwnTypeEnabled(oType);
 }
 
 inline bool 
-TypeRegistry::isOwnTypeEnabled(UnitType oType) const
+TypeRegistry::isOwnTypeEnabled(UnitType oType) 
 {
     if(isValidType(oType)) {
         return descriptorStateAt(oType).enabled;
@@ -258,15 +269,15 @@ TypeRegistry::isOwnTypeEnabled(UnitType oType) const
 inline void 
 TypeRegistry::initialize()
 {
-    mDescriptors.resize(std::max(mDescriptors.size(),(size_t)2));
+    self().mDescriptors.resize(std::max(self().mDescriptors.size(),(size_t)2));
 
     // hard-register ManifestData
     TypeDescriptorBase* mDesc = new TypeDescriptor<ManifestData>(0,0,"ManifestData");
-    mDescriptors[0] = DescriptorState(mDesc);
+    self().mDescriptors[0] = DescriptorState(mDesc);
     acceptType(0, 0);
     // hard-register SystemCmdData
     TypeDescriptorBase* cDesc = new TypeDescriptor<SystemCmdData>(1,0,"SystemCmdData");
-    mDescriptors[1] = DescriptorState(cDesc);
+    self().mDescriptors[1] = DescriptorState(cDesc);
     acceptType(1, 1);
 }
 
@@ -274,8 +285,8 @@ inline TypeBase*
 TypeRegistry::extractManifest()
 {
     ManifestData* d = new ManifestData();
-    TypeDescriptorConstIt dit = mDescriptors.begin();
-    TypeDescriptorConstIt edit = mDescriptors.end();
+    TypeDescriptorConstIt dit = self().mDescriptors.begin();
+    TypeDescriptorConstIt edit = self().mDescriptors.end();
     for(;  dit != edit; ++dit) {
         d->addRecord(dit->descriptor);
     }
@@ -285,15 +296,15 @@ TypeRegistry::extractManifest()
 inline typename TypeRegistry::UnitType 
 TypeRegistry::findTypeId(const std::string& name, const VersionType version)
 {
-    TypeDescriptorConstIt dit = mDescriptors.begin();
-    TypeDescriptorConstIt edit = mDescriptors.end();
+    TypeDescriptorConstIt dit = self().mDescriptors.begin();
+    TypeDescriptorConstIt edit = self().mDescriptors.end();
     for(;  dit != edit; ++dit) {
         if(dit->descriptor->typeName() == name &&
            dit->descriptor->typeVersion() == version) {
             return dit->descriptor->typeId();
         }
     }
-    return INVALID_TYPE_ID;
+    return self().INVALID_TYPE_ID;
 }
 
 inline void 
@@ -306,7 +317,7 @@ TypeRegistry::applyManifest(ManifestData* md)
     for(; dit != edit; ++dit) {
         // type is accepted if it has the same id AND version AND name!
         UnitType oType = findTypeId(dit->mName, dit->mVersion);
-        if(oType != INVALID_TYPE_ID)  { 
+        if(oType != self().INVALID_TYPE_ID)  { 
             acceptType(oType, dit->mId);
         }
     }
@@ -318,42 +329,42 @@ TypeRegistry::applyManifest(ManifestData* md)
 inline void 
 TypeRegistry::acceptType(UnitType oType, UnitType fType) 
 {
-    if(fType >= mTypeMap.size()) {
-        mTypeMap.resize(fType+1, INVALID_TYPE_ID);
+    if(fType >= self().mTypeMap.size()) {
+        self().mTypeMap.resize(fType+1, self().INVALID_TYPE_ID);
     }
-    mTypeMap[fType] = oType;
+    self().mTypeMap[fType] = oType;
     setTypeState(oType, true);    
 }
 
 inline bool 
-TypeRegistry::isManifestReceved() const 
+TypeRegistry::isManifestReceved() 
 {
-    return mManifestReceived;
+    return self().mManifestReceived;
 }
 
 inline void 
 TypeRegistry::setManifestReceived(bool flag)
 {
-    mManifestReceived = flag;
+    self().mManifestReceived = flag;
 }
 
 inline TypeRegistry::TypeDescriptorConstIt
-TypeRegistry::descriptorBegin() const
+TypeRegistry::descriptorBegin() 
 {
-    return mDescriptors.begin();
+    return self().mDescriptors.begin();
 }
 
 inline TypeRegistry::TypeDescriptorConstIt
-TypeRegistry::descriptorEnd() const
+TypeRegistry::descriptorEnd() 
 {
-    return mDescriptors.end();
+    return self().mDescriptors.end();
 }
 
 inline typename TypeRegistry::UnitType 
-TypeRegistry::foreignTypeToOwnType(const UnitType fType) const
+TypeRegistry::foreignTypeToOwnType(const UnitType fType) 
 {
-    return (fType < mTypeMap.size()) ? mTypeMap[fType]
-                                     : INVALID_TYPE_ID;
+    return (fType < self().mTypeMap.size()) ? self().mTypeMap[fType]
+                                            : self().INVALID_TYPE_ID;
 }
 
 inline void 
@@ -364,36 +375,29 @@ TypeRegistry::setTypeState(uint32_t typeId, bool enable)
     }
 }
 
-inline const typename TypeRegistry::DescriptorState& 
-TypeRegistry::descriptorStateAt(uint32_t typeId) const     
-{
-    assert(isValidType(typeId));
-    return mDescriptors[typeId];
-}
-
 inline typename TypeRegistry::DescriptorState& 
 TypeRegistry::descriptorStateAt(uint32_t typeId) 
 {
     assert(isValidType(typeId));
-    return mDescriptors[typeId];
+    return self().mDescriptors[typeId];
 }
 
 inline bool 
-TypeRegistry::isValidType(uint32_t typeId) const
+TypeRegistry::isValidType(uint32_t typeId) 
 {
-    return typeId < mDescriptors.size();
+    return typeId < self().mDescriptors.size();
 }
 
 inline void 
 TypeRegistry::reset()
 {
-    TypeDescriptorConstIt dit = mDescriptors.begin();
-    TypeDescriptorConstIt edit = mDescriptors.end();
+    TypeDescriptorConstIt dit = self().mDescriptors.begin();
+    TypeDescriptorConstIt edit = self().mDescriptors.end();
     for(;  dit != edit; ++dit) {
         delete dit->descriptor;
     }
-    mDescriptors.clear();
-    mTypeMap.clear();
+    self().mDescriptors.clear();
+    self().mTypeMap.clear();
     setManifestReceived(false);
 }
 

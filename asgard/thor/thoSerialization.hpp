@@ -28,6 +28,7 @@ typedef ygg::SerializationManager<
                      ygg::ConfiguredTransport<ThorQtConfig>, 
                      ThorQtConfig
                    > sm;
+typedef ygg::TypeRegistry registry;
 
 }
 

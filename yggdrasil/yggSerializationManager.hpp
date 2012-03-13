@@ -37,17 +37,12 @@ public:
     static void stopLogger();
     // API for sending serializable objects.
     static void send(TypeBase* d);
-    // API for type registration and checking
-    template<typename T> static bool registerType(const std::string& name, 
-                                                  const int version);
-    template<typename T> static bool isType(TypeBase* d);
 
 private:
     template <typename TM, ConfigManifest> class ManifestRequester;
     SerializationManager();
     static SerializationManager& self();
 private:
-    TypeRegistry  mTypeRegistry;
     Serializer*   mSerializer;
     Deserializer* mDeserializer;
 };
@@ -72,9 +67,7 @@ template <typename S, typename I, typename L, typename C>
 void 
 SerializationManager<S,I,L,C>::startService(Transport& transport, I& handler)
 {
-    // TBD: design is not very good, too many data types are 
-    // interconnected.. Review this.
-    self().mTypeRegistry.initialize();
+    TypeRegistry::initialize();
     ManifestRequester<S,C::ManifestRequired>::start();
 
     // start the transport
@@ -82,15 +75,13 @@ SerializationManager<S,I,L,C>::startService(Transport& transport, I& handler)
     if(transport.isError()) {
         return;
     }
-    transport.setTypeRegistry(&self().mTypeRegistry);
     // construct the serializer 
     if(self().mSerializer == NULL) {
         self().mSerializer = new Serializer(transport);
     }
     // construct the deserializer
     if(self().mDeserializer == NULL) {
-        self().mDeserializer = new Deserializer(transport, self().mTypeRegistry, 
-                                                *self().mSerializer, handler);
+        self().mDeserializer = new Deserializer(transport, *self().mSerializer, handler);
     }
 }
 
@@ -102,11 +93,9 @@ SerializationManager<S,I,L,C>::startLogger(Logger& logger)
     if(self().mDeserializer == NULL) {
         return;
     }
-    // set type registry...
-    logger.setTypeRegistry(&self().mTypeRegistry);
     // write manifest
     logger.start();
-    TypeBase* d = self().mTypeRegistry.extractManifest();
+    TypeBase* d = TypeRegistry::extractManifest();
     logger.writeData(d);
     delete d;
     logger.stop();
@@ -138,7 +127,6 @@ SerializationManager<S,I,L,C>::stopService()
         self().mDeserializer = NULL;
         delete temp;
     }
-    self().mTypeRegistry.reset();
 }
 
 // API for sending receiving serializable objects.
@@ -147,27 +135,10 @@ void
 SerializationManager<S,I,L,C>::send(TypeBase* d)
 {
     if(self().mSerializer && self().mSerializer->isFunctional() &&
-       self().mTypeRegistry.isOwnTypeEnabled(d->id())) {
+        TypeRegistry::isOwnTypeEnabled(d->id())) {
         // should be a way to do this through a compile time assert.
         self().mSerializer->send(d);
     }
-}
-
-// API for type registration and checking
-template <typename S, typename I, typename L, typename C>
-template<typename Type>
-bool 
-SerializationManager<S,I,L,C>::registerType(const std::string& name, const int version)
-{
-    return self().mTypeRegistry.template addType<Type>(name, version);
-}
-
-template <typename S, typename I, typename L, typename C>
-template<typename Type>
-bool 
-SerializationManager<S,I,L,C>::isType(TypeBase* d)
-{
-    return d->id() == TypeDescriptor<Type>::id();
 }
 
 /////////////////////////////////////////////////////////
@@ -188,7 +159,7 @@ public:
 private:
     static bool requestFunc(void*)
     {
-        if(SerializationManager<S,I,L,C>::self().mTypeRegistry.isManifestReceved()) {
+        if(TypeRegistry::isManifestReceved()) {
             return true;
         }
         SerializationManager<S,I,L,C>::send(new SystemCmdData(SystemCmdData::CMD_MANIFEST_REQUEST));
@@ -209,13 +180,13 @@ class SerializationManager<S,I,L,C>::ManifestRequester<TH,MANIFEST_IGNORE>
 public:
     static void start() 
     {
-        TypeRegistry::TypeDescriptorConstIt dit = SM::self().mTypeRegistry.descriptorBegin();
-        TypeRegistry::TypeDescriptorConstIt edit = SM::self().mTypeRegistry.descriptorEnd();
+        TypeRegistry::TypeDescriptorConstIt dit = TypeRegistry::descriptorBegin();
+        TypeRegistry::TypeDescriptorConstIt edit = TypeRegistry::descriptorEnd();
         for(;  dit != edit; ++dit) {
             typename SM::UnitType tId = dit->descriptor->typeId();
-            SM::self().mTypeRegistry.acceptType(tId, tId);
+            TypeRegistry::acceptType(tId, tId);
         }
-        SM::self().mTypeRegistry.setManifestReceived(true);
+        TypeRegistry::setManifestReceived(true);
     }
 };
 } // namespace ygg

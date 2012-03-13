@@ -60,7 +60,6 @@ public:
 public:
     // API indented for friends and derived classes
     Transport(DeviceBase* device = NULL);
-    void setTypeRegistry(TypeRegistry* registry);
     void start();
     void stop();
     // status checking
@@ -94,7 +93,6 @@ protected:
 protected:
     DeviceBase*   mDevice;
     DeviceState   mState;
-    TypeRegistry* mTypeRegistry;
     ChecksumType  mReadChecksum;
     ChecksumType  mWriteChecksum;
 };
@@ -117,8 +115,6 @@ class DummyTransport
 {
 public:
     DummyTransport(DeviceBase* = NULL)
-    {}
-    void setTypeRegistry(TypeRegistry*)
     {}
     void start()
     {}

@@ -38,13 +38,8 @@ public:
 private:
     ReplayManager();
     static ReplayManager<S,I,T,C>& self();
-    // API for type registration and checking
-    template<typename Type> static bool registerType(const std::string& name, 
-                                                     const int version);
-    template<typename Type> static bool isType(TypeBase* d);
 
 private:
-    TypeRegistry  mTypeRegistry;
     Deserializer* mDeserializer;
 };
 
@@ -68,19 +63,16 @@ template <typename S, typename I, typename T, typename C>
 void 
 ReplayManager<S,I,T,C>::startReplay(Transport& transport, I& handler, T& terminator)
 {
+    TypeRegistry::initialize();
     // start the transport
     transport.start();
     if(transport.isError()) {
         return;
     }
-    transport.setTypeRegistry(&self().mTypeRegistry);
-    
     // create static instances
     static Serializer sSerializer(transport);
-    
     // construct the deserializer
-    self().mDeserializer = new Deserializer(transport, self().mTypeRegistry, 
-                                            sSerializer, handler);
+    self().mDeserializer = new Deserializer(transport, sSerializer, handler);
 }
 
 
@@ -100,26 +92,6 @@ template <typename S, typename I, typename T, typename C>
 void 
 ReplayManager<S,I,T,C>::continueReplay()
 {
-}
-
-
-
-
-// API for type registration and checking
-template <typename S, typename I, typename T, typename C>
-template<typename Type>
-bool 
-ReplayManager<S,I,T,C>::registerType(const std::string& name, const int version)
-{
-    return self().mTypeRegistry.template addType<Type>(name, version);
-}
-
-template <typename S, typename I, typename T, typename C>
-template<typename Type>
-bool 
-ReplayManager<S,I,T,C>::isType(TypeBase* d)
-{
-    return d->id() == TypeDescriptor<Type>::id();
 }
 
 } // namespace ygg

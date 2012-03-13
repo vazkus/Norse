@@ -125,9 +125,18 @@ public:
         std::string mDeviceName;
     };
 public:
-    PosixDevice(const Params& params)
+    PosixDevice(const Params& params, const Mode mode)
     {
-        mDesc = ::open(params.mDeviceName.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_NOCTTY, 0644);
+        int omode = 0;
+        switch(mode) {
+            case IN:    omode = O_RDONLY | O_NOCTTY;
+                        break;
+            case OUT:   omode = O_CREAT | O_TRUNC | O_WRONLY | O_NOCTTY;
+                        break;
+            case INOUT: omode = O_CREAT | O_TRUNC | O_RDWR | O_NOCTTY;
+                        break;
+        }
+        mDesc = ::open(params.mDeviceName.c_str(), omode, 0644);
     }
     ~PosixDevice()
     {

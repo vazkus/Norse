@@ -79,10 +79,19 @@ public:
         QString mDeviceName;
     };
 public:
-    QtDevice(const Params& params)
+    QtDevice(const Params& params, const Mode mode)
     {
+        OpenModeFlag omode = QIODevice::NotOpen;
+        switch(mode) {
+            case IN:    omode = QIODevice::ReadOnly;
+                        break;
+            case OUT:   omode = QIODevice::WriteOnly;
+                        break;
+            case INOUT: omode = QIODevice::ReadWrite;
+                        break;
+        }
         setFileName(params.mDeviceName);
-        open(QIODevice::ReadWrite);
+        open(omode);
     }
     void close()
     {

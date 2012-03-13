@@ -13,16 +13,9 @@ inline
 Transport::Transport(DeviceBase* device)
  : mDevice(device),
    mState(DEVICE_STOPPED),
-   mTypeRegistry(NULL),
    mReadChecksum(0),
    mWriteChecksum(0)
 {}
-
-inline void 
-Transport::setTypeRegistry(TypeRegistry* registry)
-{
-    mTypeRegistry = registry;
-}
 
 inline void 
 Transport::start()
@@ -43,7 +36,7 @@ Transport::stop()
 inline bool 
 Transport::isFunctional() const 
 {
-    return mState == DEVICE_FUNCTIONAL;
+    return !(isError() || isStopped());
 }
 
 inline void 
@@ -110,7 +103,6 @@ Transport::writeData(const TypeBase* d)
 inline Transport::UnitType 
 Transport::readObjectType()
 {
-    assert(mTypeRegistry);
     UnitType s, t, cs;
     // read the first byte, we hope this is the sync.
     read(s);
@@ -118,7 +110,7 @@ Transport::readObjectType()
         if(s == SYNC_BYTE) {
             // ok check the next one, it should be the data type byte
             read(t);
-            if(!mTypeRegistry->isForeignTypeEnabled(t)) {
+            if(!TypeRegistry::isForeignTypeEnabled(t)) {
                 // nope, continue search
                 s = t;
                 continue;
@@ -154,10 +146,9 @@ Transport::readData(TypeBase*& d)
 inline TypeBase* 
 Transport::buildObject(UnitType fType)
 {
-    assert(mTypeRegistry);
     mReadChecksum = 0;
     // construct the object
-    TypeBase* d = mTypeRegistry->instantiateForeignType(fType);
+    TypeBase* d = TypeRegistry::instantiateForeignType(fType);
     // make sure the type was valid.. TBD: do a proper handling...
     if(d == NULL) {
         return NULL;
@@ -353,7 +344,10 @@ inline void
 Transport::write(const void* ptr, uint32_t size)
 {
     uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; (i < size) || isError(); ++i) {
+    for(uint32_t i = 0; (i < size); ++i) {
+        if(!isFunctional()) {
+            break;
+        }
         if(!mDevice->write(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
@@ -366,7 +360,10 @@ inline void
 Transport::read(void* ptr, uint32_t size) 
 {
     uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; (i < size) || isError(); ++i) {
+    for(uint32_t i = 0; (i < size); ++i) {
+        if(!isFunctional()) {
+            break;
+        }
         if(!mDevice->read(bptr+i, 1)) {
             mState = DEVICE_ERROR;
             break;
@@ -464,7 +461,6 @@ Transport::swap(Transport& transport)
     stop();
     std::swap(mDevice, transport.mDevice);
     std::swap(mState, transport.mState);
-    std::swap(mTypeRegistry, transport.mTypeRegistry);
     std::swap(mWriteChecksum, transport.mWriteChecksum);
     std::swap(mReadChecksum, transport.mReadChecksum);
 }

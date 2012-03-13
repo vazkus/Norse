@@ -105,7 +105,7 @@ public:
     };
 
 public:
-    ChibiosDevice(const Params& params)
+    ChibiosDevice(const Params& params, const Mode)
     {
         mSD = params.mSD;
         assert(mSD);
