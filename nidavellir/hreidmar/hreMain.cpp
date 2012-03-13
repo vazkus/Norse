@@ -24,16 +24,16 @@ public:
     void process(ygg::TypeBase* d)
     {
         // main loop
-        if(sm::isType<rat::StrCmdData>(d)) {
+        if(registry::isType<rat::StrCmdData>(d)) {
             rat::StrCmdData* sd = (rat::StrCmdData*)d;
             sm::send(new rat::StrCmdData(sd->string()));
         } else
-        if(sm::isType<rat::PingData>(d)) {
+        if(registry::isType<rat::PingData>(d)) {
             // bounce back the received ping packet
             rat::PingData* pd = (rat::PingData*)d;
             sm::send(new rat::PingData(pd->timeStamp()));
         } else
-        if(sm::isType<rat::BasicType<float,2> >(d)) {
+        if(registry::isType<rat::BasicType<float,2> >(d)) {
         } else {
         }
     }
@@ -48,10 +48,10 @@ int main(void)
     bro::LISAccelerometer accSensor;
 
     // register some useful and dummy types...
-    sm::registerType<rat::BasicType<float, 2> >("BasicType4", 1);
-    sm::registerType<rat::LISData>("LISData", 1);
-    sm::registerType<rat::StrCmdData>("StrCmdData", 1);
-    sm::registerType<rat::PingData>("PingData", 1);
+    registry::addType<rat::BasicType<float, 2> >("BasicType4", 1);
+    registry::addType<rat::LISData>("LISData", 1);
+    registry::addType<rat::StrCmdData>("StrCmdData", 1);
+    registry::addType<rat::PingData>("PingData", 1);
 
     // instantiate the input-handler 
     sm::InputHandler handler;
@@ -64,7 +64,7 @@ int main(void)
         GPIOA, 3, PAL_MODE_ALTERNATE(7), // for RX
         GPIOA, 2, PAL_MODE_ALTERNATE(7)  // for TX
     };
-    sm::Device device(params);
+    sm::Device device(params, sm::Device::INOUT);
     if(!device.isOpen()) {
         return 1;
     }

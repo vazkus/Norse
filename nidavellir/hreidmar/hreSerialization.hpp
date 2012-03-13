@@ -29,8 +29,10 @@ class ChInputHandler;
 typedef ygg::SerializationManager<
                                    ygg::ChibiosSystemTraits, 
                                    ChInputHandler, 
-                                   ygg::DummyTransport, 
-                                   ChibiosConfig
+                                   ChibiosConfig,
+                                   ygg::DummyDevice
                                  > sm;
+typedef ygg::TypeRegistry registry;
+
 
 #endif //HRE_SERIALIZATIN_HPP
