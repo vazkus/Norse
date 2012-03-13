@@ -1,7 +1,6 @@
 #ifndef YGG_CHIBIOS_TRAITS_HPP
 #define YGG_CHIBIOS_TRAITS_HPP
 
-#include "yggDeviceBase.hpp"
 #include "ch.hpp"
 #include <fcntl.h>
 #include <unistd.h>
@@ -89,9 +88,15 @@ private:
     void*        mParam;
 };
 
-class ChibiosDevice : public DeviceBase
+class ChibiosDevice
 {
 public:
+    enum Mode
+    {
+        IN,
+        OUT,
+        INOUT
+    };
     struct Params
     {
         SerialDriver* mSD;

@@ -116,7 +116,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer
     // find a proper break condition...
     while(true) {
         TypeBase* d = NULL;
-        mOwner.mTransport.readData(d);
+        mOwner.mTransport.deserialize(d);
         if(d == NULL) {
             continue;
         }
@@ -133,7 +133,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_BLOCKING>::Helper(Deserializer
         if(TypeRegistry::isOwnTypeEnabled(d->id())) {
             mOwner.mHandler.process(d);
             // write the object to the log...
-            mOwner.mLogger.writeData(d);
+            mOwner.mLogger.serialize(d);
         }
         delete d;
     }
@@ -201,7 +201,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::deserializerFunc
 {
     Helper<TH,COMMUNICATION_NONBLOCKING>* h = (Helper<TH,COMMUNICATION_NONBLOCKING>*)param;
     TypeBase* d = NULL;
-    h->mOwner.mTransport.readData(d);
+    h->mOwner.mTransport.deserialize(d);
     if(d != NULL) {
         assert(TypeRegistry::isOwnTypeEnabled(d->id())); 
         h->mInputQueue.push(d);
@@ -234,7 +234,7 @@ Deserializer<T,S,I,L,C>::Helper<TH, COMMUNICATION_NONBLOCKING>::inputHanderFunc(
         if(TypeRegistry::isOwnTypeEnabled(d->id())) {
             h->mOwner.mHandler.process(d);
             // write the object to the log...
-            h->mOwner.mLogger.writeData(d);
+            h->mOwner.mLogger.serialize(d);
         }
         delete d;
     }

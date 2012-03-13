@@ -18,14 +18,15 @@ public:
     typedef I InputHandler;
     typedef T Terminator;
     typedef C Configuration;
-    typedef ConfiguredTransport<C> Transport;
     typedef typename S::MutexType  Mutex;
     typedef typename S::CondType   Condition;
     typedef typename S::ThreadType Thread;
+    typedef typename S::DeviceType Device;
     typedef typename S::Utils      Utils;
-    typedef ygg::DummyTransport    Logger;
     typedef ygg::DummySerializer   Serializer;
-    typedef typename S::DeviceParamsType DeviceParams;
+    typedef ConfiguredTransport<C,Device>      Transport;
+    typedef ConfiguredTransport<C,DummyDevice> Logger;
+    typedef typename S::DeviceParamsType       DeviceParams;
     typedef ygg::Deserializer<S,Serializer,I,Logger,C> Deserializer;
 
 public:

@@ -1,7 +1,6 @@
 #ifndef YGG_QT_TRAITS_HPP
 #define YGG_QT_TRAITS_HPP
 
-#include "yggDeviceBase.hpp"
 #include <QMutex>
 #include <QWaitCondition>
 #include <QThread>
@@ -71,9 +70,15 @@ private:
     void*        mParams;
 };
 
-class QtDevice : public QFile, public DeviceBase
+class QtDevice : public QFile
 {
 public:
+    enum Mode 
+    {
+        IN,
+        OUT,
+        INOUT        
+    };
     struct Params
     {
         QString mDeviceName;

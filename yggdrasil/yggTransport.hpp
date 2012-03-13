@@ -7,8 +7,6 @@
 namespace ygg
 {
 
-class DeviceBase;
-
 class Transport 
 {
     template <typename T, typename S, typename I, typename L, typename C> friend class Deserializer;
@@ -58,10 +56,9 @@ public:
     template <class T> void writeChecksumed(const T& td);
 
 public:
-    // API indented for friends and derived classes
-    Transport(DeviceBase* device = NULL);
-    void start();
-    void stop();
+    Transport();
+    virtual void start() = 0;
+    virtual void stop() = 0;
     // status checking
     bool isFunctional() const;
     void setFunctional();
@@ -73,16 +70,16 @@ public:
     void setWaitSync();
 
     // writing serializable objects
-    void writeData(const TypeBase* d);
+    void serialize(const TypeBase* d);
     // reading serializable objects
-    void readData(TypeBase*& d);
+    void deserialize(TypeBase*& d);
 
 protected:
     UnitType  readObjectType();
     TypeBase* buildObject(UnitType fType);
     template <ConfigEndianness E, int L> void fixEndianness(void* ptr);
-    void write(const void* ptr, uint32_t size);
-    void read(void* ptr, uint32_t size);
+    virtual void write(const void* ptr, uint32_t size) = 0;
+    virtual void read(void* ptr, uint32_t size) = 0;
 
 protected:
     virtual void fixEndianness16(void* ptr) = 0;
@@ -91,7 +88,6 @@ protected:
     virtual void swap(Transport& transport);
 
 protected:
-    DeviceBase*   mDevice;
     DeviceState   mState;
     ChecksumType  mReadChecksum;
     ChecksumType  mWriteChecksum;
@@ -99,56 +95,39 @@ protected:
 
 
 
-template <typename C>
+template <typename C, typename D>
 class ConfiguredTransport : public Transport
 {
 public:
-    ConfiguredTransport(DeviceBase* device = NULL);
+    ConfiguredTransport(D* device = NULL);
+    virtual void start();
+    virtual void stop();
+    virtual void swap(ConfiguredTransport<C,D>& transport);
 protected:
     virtual void fixEndianness16(void* ptr);
     virtual void fixEndianness32(void* ptr);
     virtual void fixEndianness64(void* ptr);
+    virtual void write(const void* ptr, uint32_t size);
+    virtual void read(void* ptr, uint32_t size);
+protected:
+    D* mDevice;
 };
 
 
-class DummyTransport
+class DummyDevice
+{};
+
+template <typename C>
+class ConfiguredTransport<C, DummyDevice>
 {
 public:
-    DummyTransport(DeviceBase* = NULL)
+    void serialize(const TypeBase*)
     {}
-    void start()
+    void deserialize(TypeBase*&)
     {}
-    void stop()
-    {}
-    bool isFunctional() const
-    { 
-        return false; 
-    }
-    void setFunctional()
-    {}
-    bool isError() const
-    { 
-        return false;
-    }
-    void setError()
-    {}
-    bool isStopped() const
-    { 
-        return true; 
-    }
-    void setStopped()
-    {}
-    bool isWaitSync() const
-    { 
-        return false; 
-    }
-    void setWaitSync()
-    {}
-    void writeData(const TypeBase*)
-    {}
-    void readData(TypeBase*&)
-    {}
+    
 };
+
 
 } // namespace ygg
 

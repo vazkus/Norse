@@ -1,7 +1,6 @@
 #ifndef YGG_POSIX_TRAITS_HPP
 #define YGG_POSIX_TRAITS_HPP
 
-#include "yggDeviceBase.hpp"
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -117,9 +116,15 @@ private:
     std::string  mName;
 };
 
-class PosixDevice : public DeviceBase
+class PosixDevice
 {
 public:
+    enum Mode 
+    {
+        IN,
+        OUT,
+        INOUT        
+    };
     struct Params 
     {
         std::string mDeviceName;

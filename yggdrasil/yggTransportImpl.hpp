@@ -1,7 +1,6 @@
 #ifndef YGG_TRANSPORT_IMPL_HPP
 #define YGG_TRANSPORT_IMPL_HPP
 
-#include "yggDeviceBase.hpp"
 #include "yggTypeRegistry.hpp"
 #include <cassert>
 
@@ -10,28 +9,12 @@ namespace ygg
 {
 
 inline
-Transport::Transport(DeviceBase* device)
- : mDevice(device),
-   mState(DEVICE_STOPPED),
+Transport::Transport()
+ : mState(DEVICE_STOPPED),
    mReadChecksum(0),
    mWriteChecksum(0)
 {}
 
-inline void 
-Transport::start()
-{
-    if(mDevice && mDevice->isOpen()) {
-        mState = DEVICE_WAITING_SYNC;
-    } else {
-        mState = DEVICE_ERROR;
-    }
-}
-
-inline void 
-Transport::stop()
-{
-    setStopped();
-}
 
 inline bool 
 Transport::isFunctional() const 
@@ -82,7 +65,7 @@ Transport::setWaitSync()
 }
 
 inline void 
-Transport::writeData(const TypeBase* d)
+Transport::serialize(const TypeBase* d)
 {
     //assert(d && d->desc());
     UnitType typeId = d->id();
@@ -132,7 +115,7 @@ Transport::readObjectType()
 }
 
 inline void 
-Transport::readData(TypeBase*& d)
+Transport::deserialize(TypeBase*& d)
 {
     d = NULL;
     UnitType fType = readObjectType();
@@ -337,40 +320,6 @@ Transport::read(std::string& stringd)
 }
 
 
-////////////////////////////////////////////////////////
-// Low level methods                                  //
-////////////////////////////////////////////////////////
-inline void
-Transport::write(const void* ptr, uint32_t size)
-{
-    uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; (i < size); ++i) {
-        if(!isFunctional()) {
-            break;
-        }
-        if(!mDevice->write(bptr+i, 1)) {
-            mState = DEVICE_ERROR;
-            break;
-        }
-        mWriteChecksum += *(bptr+i);
-    }
-}
-
-inline void
-Transport::read(void* ptr, uint32_t size) 
-{
-    uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; (i < size); ++i) {
-        if(!isFunctional()) {
-            break;
-        }
-        if(!mDevice->read(bptr+i, 1)) {
-            mState = DEVICE_ERROR;
-            break;
-        }
-        mReadChecksum += *(bptr+i);
-    }
-}
 
 template <class T>
 void
@@ -458,38 +407,100 @@ Transport::fixEndianness<ENDIAN_SWAP, 8>(void* ptr)
 inline void
 Transport::swap(Transport& transport) 
 {
-    stop();
-    std::swap(mDevice, transport.mDevice);
     std::swap(mState, transport.mState);
     std::swap(mWriteChecksum, transport.mWriteChecksum);
     std::swap(mReadChecksum, transport.mReadChecksum);
 }
 
-template <typename C>
+template <typename C, typename D>
+ConfiguredTransport<C,D>::ConfiguredTransport(D* device)
+ : mDevice(device)
+{
+}
+
+template <typename C, typename D>
 void 
-ConfiguredTransport<C>::fixEndianness16(void* ptr)
+ConfiguredTransport<C,D>::fixEndianness16(void* ptr)
 {
     fixEndianness<C::Endianness,2>(ptr);
 }
 
-template <typename C>
+template <typename C, typename D>
 void 
-ConfiguredTransport<C>::fixEndianness32(void* ptr)
+ConfiguredTransport<C,D>::fixEndianness32(void* ptr)
 {
     fixEndianness<C::Endianness,4>(ptr);
 }
 
-template <typename C>
+template <typename C, typename D>
 void 
-ConfiguredTransport<C>::fixEndianness64(void* ptr)
+ConfiguredTransport<C,D>::fixEndianness64(void* ptr)
 {
     fixEndianness<C::Endianness,8>(ptr);
 }
 
-template <typename C>
-ConfiguredTransport<C>::ConfiguredTransport(DeviceBase* device)
- : Transport(device)
+template <typename C, typename D>
+void
+ConfiguredTransport<C,D>::start()
 {
+    if(mDevice && mDevice->isOpen()) {
+        setWaitSync();
+    } else {
+        setError();
+    }
+}
+
+template <typename C, typename D>
+void
+ConfiguredTransport<C,D>::stop()
+{
+    setStopped();
+}
+
+template <typename C, typename D>
+void
+ConfiguredTransport<C,D>::swap(ConfiguredTransport<C,D>& ctransport) 
+{
+    stop();
+    std::swap(mDevice, ctransport.mDevice);
+    Transport::swap(ctransport);
+}
+
+////////////////////////////////////////////////////////
+// Low level methods                                  //
+////////////////////////////////////////////////////////
+template <typename C, typename D>
+void
+ConfiguredTransport<C,D>::write(const void* ptr, uint32_t size)
+{
+    uint8_t* bptr = (uint8_t*)ptr;
+    for(uint32_t i = 0; (i < size); ++i) {
+        if(!isFunctional()) {
+            break;
+        }
+        if(!mDevice->write(bptr+i, 1)) {
+            setError();
+            break;
+        }
+        mWriteChecksum += *(bptr+i);
+    }
+}
+
+template <typename C, typename D>
+void
+ConfiguredTransport<C,D>::read(void* ptr, uint32_t size) 
+{
+    uint8_t* bptr = (uint8_t*)ptr;
+    for(uint32_t i = 0; (i < size); ++i) {
+        if(!isFunctional()) {
+            break;
+        }
+        if(!mDevice->read(bptr+i, 1)) {
+            setError();
+            break;
+        }
+        mReadChecksum += *(bptr+i);
+    }
 }
 
 } // namespace ygg
