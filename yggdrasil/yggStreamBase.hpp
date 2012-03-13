@@ -10,14 +10,6 @@ namespace ygg
 class DeviceBase
 {
 public:
-    enum Mode 
-    {
-        IN,
-        OUT,
-        INOUT        
-    };
-
-public:
     virtual void close() = 0;
     virtual bool read(void* ptr, uint32_t size) = 0;
     virtual bool write(const void* ptr, uint32_t size) = 0;
