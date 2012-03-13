@@ -31,7 +31,6 @@ typedef ygg::TypeRegistry registry;
 typedef ygg::SerializationManager<
                      ygg::PosixSystemTraits, 
                      PCInputHandler, 
-                     ygg::ConfiguredTransport<ThorPosixConfig>, 
                      ThorPosixConfig
                     > sm;
 typedef ygg::ReplayManager<

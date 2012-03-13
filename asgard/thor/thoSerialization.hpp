@@ -25,7 +25,6 @@ struct ThorQtConfig
 typedef ygg::SerializationManager<
                      ygg::QtSystemTraits, 
                      InputHandler,  
-                     ygg::ConfiguredTransport<ThorQtConfig>, 
                      ThorQtConfig
                    > sm;
 typedef ygg::TypeRegistry registry;
