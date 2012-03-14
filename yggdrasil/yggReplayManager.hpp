@@ -26,7 +26,7 @@ public:
     typedef ygg::DummySerializer   Serializer;
     typedef ConfiguredTransport<C,Device>      Transport;
     typedef ConfiguredTransport<C,DummyDevice> Logger;
-    typedef typename S::DeviceParamsType       DeviceParams;
+    typedef typename Device::Params            DeviceParams;
     typedef ygg::Deserializer<S,Serializer,I,Logger,C> Deserializer;
 
 public:

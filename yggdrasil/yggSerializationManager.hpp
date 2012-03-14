@@ -23,9 +23,9 @@ public:
     typedef typename S::DeviceType Device;
     typedef typename S::Utils      Utils;
     typedef ygg::Serializer<S,C>   Serializer;
-    typedef ConfiguredTransport<C,Device>  Transport;
-    typedef ConfiguredTransport<C,L>       Logger;
-    typedef typename S::DeviceParamsType   DeviceParams;
+    typedef ConfiguredTransport<C,Device> Transport;
+    typedef ConfiguredTransport<C,L>      Logger;
+    typedef typename Device::Params       DeviceParams;
     typedef ygg::Deserializer<S,Serializer,I,Logger,C> Deserializer;
 
 public:
