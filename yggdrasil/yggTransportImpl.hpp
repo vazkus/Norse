@@ -152,6 +152,50 @@ Transport::buildObject(UnitType fType)
     return d;
 }
 
+inline Transport::ChecksumType
+Transport::calculateChecksumN(const void* ptr, uint32_t size)
+{
+    ChecksumType checksum = 0;
+    uint8_t* bptr = (uint8_t*)ptr;
+    for(uint32_t i = 0; i < size; ++i) {
+        checksum += bptr[i];
+    }
+    return checksum;
+}
+
+inline Transport::ChecksumType
+Transport::calculateChecksum8(const void* ptr)
+{
+    uint8_t* bptr = (uint8_t*)ptr;
+    ChecksumType checksum = bptr[0];
+    return checksum;
+}
+
+inline Transport::ChecksumType
+Transport::calculateChecksum16(const void* ptr)
+{
+    uint8_t* bptr = (uint8_t*)ptr;
+    ChecksumType checksum = bptr[0] + bptr[1];
+    return checksum;
+}
+
+inline Transport::ChecksumType
+Transport::calculateChecksum32(const void* ptr)
+{
+    uint8_t* bptr = (uint8_t*)ptr;
+    ChecksumType checksum = bptr[0] + bptr[1] + bptr[2] + bptr[3];
+    return checksum;
+}
+
+inline Transport::ChecksumType
+Transport::calculateChecksum64(const void* ptr)
+{
+    uint8_t* bptr = (uint8_t*)ptr;
+    ChecksumType checksum = bptr[0] + bptr[1] + bptr[2] + bptr[3] + 
+                            bptr[4] + bptr[5] + bptr[6] + bptr[7];
+    return checksum;
+}
+
 ////////////////////////////////////////////////////////
 // Writing methods                                    //
 ////////////////////////////////////////////////////////
@@ -160,6 +204,7 @@ Transport::write(uint64_t intd)
 {
     fixEndianness64(&intd);
     write(&intd, sizeof(uint64_t));
+    mWriteChecksum += calculateChecksum64(&intd);
 }
 
 inline void
@@ -167,6 +212,7 @@ Transport::write(int64_t intd)
 {
     fixEndianness64(&intd);
     write(&intd, sizeof(int64_t));
+    mWriteChecksum += calculateChecksum64(&intd);
 }
 
 inline void
@@ -174,6 +220,7 @@ Transport::write(uint32_t intd)
 {
     fixEndianness32(&intd);
     write(&intd, sizeof(uint32_t));
+    mWriteChecksum += calculateChecksum32(&intd);
 }
 
 inline void
@@ -181,6 +228,7 @@ Transport::write(int32_t intd)
 {
     fixEndianness32(&intd);
     write(&intd, sizeof(int32_t));
+    mWriteChecksum += calculateChecksum32(&intd);
 }
 
 inline void
@@ -188,6 +236,7 @@ Transport::write(uint16_t intd)
 {
     fixEndianness16(&intd);
     write(&intd, sizeof(uint16_t));
+    mWriteChecksum += calculateChecksum16(&intd);
 }
 
 inline void
@@ -195,18 +244,21 @@ Transport::write(int16_t intd)
 {
     fixEndianness16(&intd);
     write(&intd, sizeof(int16_t));
+    mWriteChecksum += calculateChecksum16(&intd);
 }
 
 inline void
 Transport::write(uint8_t intd)
 {
     write(&intd, sizeof(uint8_t));
+    mWriteChecksum += calculateChecksum8(&intd);
 }
 
 inline void
 Transport::write(int8_t intd)
 {
     write(&intd, sizeof(int8_t));
+    mWriteChecksum += calculateChecksum8(&intd);
 }
 
 
@@ -215,6 +267,7 @@ Transport::write(float floatd)
 {
     fixEndianness32(&floatd);
     write(&floatd, sizeof(float));
+    mWriteChecksum += calculateChecksum32(&floatd);
 }
 
 inline void
@@ -222,6 +275,7 @@ Transport::write(double doubled)
 {
     fixEndianness64(&doubled);
     write(&doubled, sizeof(double));
+    mWriteChecksum += calculateChecksum64(&doubled);
 }
 
 inline void
@@ -230,6 +284,7 @@ Transport::write(const std::string& stringd)
     uint32_t stringd_len = stringd.length();
     writeChecksumed(stringd_len);
     write(stringd.c_str(), stringd_len);
+    mWriteChecksum += calculateChecksumN(stringd.c_str(), stringd_len);
 }
 
 
@@ -240,6 +295,7 @@ inline void
 Transport::read(uint64_t& intd)
 {
     read(&intd, sizeof(uint64_t));
+    mReadChecksum += calculateChecksum64(&intd);
     fixEndianness64(&intd);
 }
 
@@ -247,6 +303,7 @@ inline void
 Transport::read(int64_t& intd)
 {
     read(&intd, sizeof(int64_t));
+    mReadChecksum += calculateChecksum64(&intd);
     fixEndianness64(&intd);
 }
 
@@ -254,6 +311,7 @@ inline void
 Transport::read(uint32_t& intd)
 {
     read(&intd, sizeof(uint32_t));
+    mReadChecksum += calculateChecksum32(&intd);
     fixEndianness32(&intd);
 }
 
@@ -261,6 +319,7 @@ inline void
 Transport::read(int32_t& intd)
 {
     read(&intd, sizeof(int32_t));
+    mReadChecksum += calculateChecksum32(&intd);
     fixEndianness32(&intd);
 }
 
@@ -269,6 +328,7 @@ inline void
 Transport::read(uint16_t& intd)
 {
     read(&intd, sizeof(uint16_t));
+    mReadChecksum += calculateChecksum16(&intd);
     fixEndianness16(&intd);
 }
 
@@ -276,6 +336,7 @@ inline void
 Transport::read(int16_t& intd)
 {
     read(&intd, sizeof(int16_t));
+    mReadChecksum += calculateChecksum16(&intd);
     fixEndianness16(&intd);
 }
 
@@ -283,18 +344,21 @@ inline void
 Transport::read(uint8_t& intd)
 {
     read(&intd, sizeof(uint8_t));
+    mReadChecksum += calculateChecksum8(&intd);
 }
 
 inline void
 Transport::read(int8_t& intd)
 {
     read(&intd, sizeof(int8_t));
+    mReadChecksum += calculateChecksum8(&intd);
 }
 
 inline void
 Transport::read(float& floatd)
 {
     read(&floatd, sizeof(float));
+    mReadChecksum += calculateChecksum32(&floatd);
     fixEndianness32(&floatd);
 }
 
@@ -302,6 +366,7 @@ inline void
 Transport::read(double& doubled)
 {
     read(&doubled, sizeof(double));
+    mReadChecksum += calculateChecksum64(&doubled);
     fixEndianness64(&doubled);
 }
 
@@ -315,6 +380,7 @@ Transport::read(std::string& stringd)
     }
     char* buf = new char[stringd_len];
     read(buf, stringd_len);
+    mReadChecksum += calculateChecksumN(buf, stringd_len);
     stringd.assign(buf, stringd_len);
     delete buf;
 }
@@ -473,16 +539,8 @@ template <typename C, typename D>
 void
 ConfiguredTransport<C,D>::write(const void* ptr, uint32_t size)
 {
-    uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; (i < size); ++i) {
-        if(!isFunctional()) {
-            break;
-        }
-        if(!mDevice->write(bptr+i, 1)) {
-            setError();
-            break;
-        }
-        mWriteChecksum += *(bptr+i);
+    if(isFunctional() && !mDevice->write((uint8_t*)ptr, size)) {
+        setError();
     }
 }
 
@@ -490,16 +548,8 @@ template <typename C, typename D>
 void
 ConfiguredTransport<C,D>::read(void* ptr, uint32_t size) 
 {
-    uint8_t* bptr = (uint8_t*)ptr;
-    for(uint32_t i = 0; (i < size); ++i) {
-        if(!isFunctional()) {
-            break;
-        }
-        if(!mDevice->read(bptr+i, 1)) {
-            setError();
-            break;
-        }
-        mReadChecksum += *(bptr+i);
+    if(isFunctional() && !mDevice->read((uint8_t*)ptr, size)) {
+        setError();
     }
 }
 

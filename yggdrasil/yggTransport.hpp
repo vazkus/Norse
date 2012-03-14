@@ -80,6 +80,11 @@ protected:
     template <ConfigEndianness E, int L> void fixEndianness(void* ptr);
     virtual void write(const void* ptr, uint32_t size) = 0;
     virtual void read(void* ptr, uint32_t size) = 0;
+    ChecksumType calculateChecksum8(const void* ptr);
+    ChecksumType calculateChecksum16(const void* ptr);
+    ChecksumType calculateChecksum32(const void* ptr);
+    ChecksumType calculateChecksum64(const void* ptr);
+    ChecksumType calculateChecksumN(const void* ptr, uint32_t size);
 
 protected:
     virtual void fixEndianness16(void* ptr) = 0;
