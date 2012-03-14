@@ -156,11 +156,21 @@ public:
     }
     bool read(void* b, uint32_t size)
     {
-        return ::read(mDesc, b, size) == size;
+        uint32_t bytes_read = 0;
+        while(size-bytes_read) {
+            bytes_read += ::read(mDesc, (uint8_t*)b + bytes_read, size-bytes_read);
+        }
+        // return false if error on the device
+        return true;
     }
     bool write(const void* b, uint32_t size) 
     {
-        return ::write(mDesc, b, size) == size;
+        uint32_t bytes_write = 0;
+        while(size-bytes_write) {
+            bytes_write += ::write(mDesc, (uint8_t*)b + bytes_write, size-bytes_write);
+        }
+        // return false if error on the device
+        return true;
     }
     bool isOpen() 
     {
@@ -193,7 +203,6 @@ public:
     typedef PosixCondVar CondType;
     typedef PosixThread  ThreadType;
     typedef PosixDevice  DeviceType;
-    typedef DeviceType::Params DeviceParamsType;
     typedef PosixUtils   Utils;
 };
 

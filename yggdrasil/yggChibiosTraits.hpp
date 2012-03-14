@@ -160,7 +160,6 @@ public:
     typedef ChibiosCondVar     CondType;
     typedef ChibiosThread      ThreadType;
     typedef ChibiosDevice      DeviceType;
-    typedef DeviceType::Params DeviceParamsType;
     typedef ChibiosUtils       Utils;
 };
 

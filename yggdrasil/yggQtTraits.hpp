@@ -133,7 +133,6 @@ public:
     typedef QtCondVar CondType;
     typedef QtThread  ThreadType;
     typedef QtDevice  DeviceType;
-    typedef DeviceType::Params DeviceParamsType;
     typedef QtUtils   Utils;
 };
 
